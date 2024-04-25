@@ -57,9 +57,9 @@ class Env:
 
 		orn = p.getQuaternionFromEuler([0, -math.pi, 0])
 		jointPoses = p.calculateInverseKinematics(self.xarmId,
-																							self.lastJointId,
-																							position,
-																							orn)
+													self.lastJointId,
+													position,
+													orn)
 		return jointPoses
 
 	def simulate_debug(self):
@@ -77,46 +77,55 @@ class Env:
 		ax_id = 0
 		ax = ['x', 'y', 'z']
 		eps = 1e-2
+		cnt = 0
 		while not np.all(np.abs(endPos - currentPos) < eps):
-			print("first_loop", currentPos)
 			while not np.abs(endPos[ax_id] - currentPos[ax_id]) < eps:
-				# print("second_loop")
-				tempPos = list(currentPos)
-				tempPos[ax_id] += 0.01 if endPos[ax_id] > currentPos[ax_id] else -0.01
-				jointPoses = self.calculate_joint_poses(tempPos)
+				currentPos[ax_id] += eps if endPos[ax_id] > currentPos[ax_id] else -eps
+				cnt += 1
+
+				if cnt % 100 == 0:
+					print(currentPos)
+				jointPoses = self.calculate_joint_poses(currentPos)
 				for j in range(self.movableJoints):
 					p.setJointMotorControl2(bodyIndex=self.xarmId,
-																	jointIndex=j + 1,
-																	controlMode=p.POSITION_CONTROL,
-																	targetPosition=jointPoses[j],
-																	# targetVelocity=0,
-																	force=500,
-																	# positionGain=0.03,
-																	# velocityGain=1
-																	)
+											jointIndex=j + 1,
+											controlMode=p.POSITION_CONTROL,
+											targetPosition=jointPoses[j],
+											# targetVelocity=0,
+											force=5000,
+											# positionGain=0.03,
+											# velocityGain=1
+											)
 
 				linkPose = p.getLinkState(self.xarmId, self.gripperId)[0]
 				p.addUserDebugLine(currentPos, linkPose, [0.7, 0, 0], 1, self.trailDuration)
-				currentPos = linkPose
-				print(f"{ax[ax_id]}, current_pos: {linkPose}, end_pos: {endPos[ax_id]}")
-				time.sleep(1. / 2400.)
+				currentPos[ax_id] = linkPose[ax_id]
+				time.sleep(1. / 500.)
+				p.stepSimulation()
+			print(f"{ax[ax_id]} reached, current_pos: {currentPos}, end_pos: {endPos}")
 			ax_id += 1
 
+
+		print(f"End position reached: {endPos}")
+
 	def simulate(self):
-		p.setRealTimeSimulation(self.REAL_TIME_SIMULATION_FLAG)
+		p.setRealTimeSimulation(0)
 		self.trailDuration = 50
 		# pos = [0, 0.1, 0.05]
 		# prevPose = pos.copy()
 		positions = [
-			[0, 0.2, 0.05],
-			[0, 0.3, 0.05],
-			[0.3, 0.3, 0.05],
+			# [0, 0.2, 0.05],
+			[0, 0.3, 0.1],
+			[0.3, 0.3, 0.1],
 			[0.3, 0.3, 0.3],
+			[-0.3, 0.3, 0.3],
+			[-0.3, -0.3, 0.3],
+			[0.3, -0.3, 0.3],
 			[0, 0.3, 0.3],
-			[0, 0.3, 0.05],
+			[0, 0.3, 0.1],
 		]
-		# for pos in positions:
-		self.move_to_position(positions[2])
+		for pos in positions:
+			self.move_to_position(pos)
 		#
 		# # directions = [1, 1, 0, 2, 0, 2]
 		# prevLinkPose = p.getLinkState(self.xarmId, self.gripperId)[0]
