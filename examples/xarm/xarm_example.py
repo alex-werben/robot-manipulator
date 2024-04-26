@@ -8,21 +8,24 @@ print(pd.getDataPath())
 
 useFixedBase = True
 # flags = p.URDF_INITIALIZE_SAT_FEATURES#0#
-# flags = p.URDF_USE_SELF_COLLISION
-flags = 0
+flags = p.URDF_USE_SELF_COLLISION
+# flags = 0
 
 # plane_pos = [0,0,0]
 # plane = p.loadURDF("plane.urdf", plane_pos, flags = flags, useFixedBase=useFixedBase)
 table_pos = [0, 0, -0.625]
-table = p.loadURDF("table/table.urdf", table_pos, flags=flags, useFixedBase=useFixedBase)
-xarm = p.loadURDF("xarm/xarm6_robot.urdf", flags=flags, useFixedBase=useFixedBase)
-
+# table = p.loadURDF("table/table.urdf", table_pos, flags=flags, useFixedBase=useFixedBase)
+xarm = p.loadURDF("xarm/xarm6_with_gripper.urdf", flags=flags, useFixedBase=useFixedBase)
+# p.loadSDF()loadSDF
+#
 jointIds = []
 paramIds = []
 gripperId = -1
 
+print(xarm)
+# xarm = xarm[0]
 for j in range(p.getNumJoints(xarm)):
-    p.changeDynamics(xarm, j, linearDamping=0, angularDamping=0)
+    # p.changeDynamics(xarm, j, linearDamping=0, angularDamping=0)
     info = p.getJointInfo(xarm, j)
     # print(info)
     jointName = info[1]
@@ -30,13 +33,13 @@ for j in range(p.getNumJoints(xarm)):
 
     if jointType == p.JOINT_PRISMATIC or jointType == p.JOINT_REVOLUTE:
         jointIds.append(j)
-        paramIds.append(p.addUserDebugParameter(jointName.decode("utf-8"), -4, 4, 0))
+        paramIds.append(p.addUserDebugParameter(jointName.decode("utf-8"), -3.14, 3.14, 0))
 
 skip_cam_frames = 10
 print(jointIds)
 j = 1
 while True:
-    print(p.getLinkState(xarm, 6)[0], j)
+    # print(p.getLinkState(xarm, 6)[0], j)
     j += 1
     p.stepSimulation()
     for i in range(len(paramIds)):
