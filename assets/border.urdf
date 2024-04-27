@@ -1,0 +1,57 @@
+<?xml version="0.0" ?>
+<robot name="border">
+  <material name="black">
+    <color rgba="0 0 0 0.3"/>
+  </material>
+  <link name="part_1">
+    <visual>
+      <geometry>
+		    <box size="0.05 1.4 0.05"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <link name="part_2">
+    <visual>
+      <geometry>
+		    <box size="0.6 0.05 0.05"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <link name="part_3">
+    <visual>
+      <geometry>
+		    <box size="0.6 0.05 0.05"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  <link name="part_4">
+    <visual>
+      <geometry>
+		    <box size="0.05 1.4 0.05"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="joint_1" type="fixed">
+    <parent link="part_1"/>
+    <child link="part_2"/>
+    <origin xyz="0.325 0.675 0"/>
+  </joint>
+
+  <joint name="joint_2" type="fixed">
+    <parent link="part_1"/>
+    <child link="part_3"/>
+    <origin xyz="0.325 -0.675 0"/>
+  </joint>
+
+  <joint name="joint_3" type="fixed">
+    <parent link="part_1"/>
+    <child link="part_4"/>
+    <origin xyz="0.65 0 0"/>
+  </joint>
+
+</robot>

@@ -1,214 +1,141 @@
-import pybullet as pb
+import pybullet as p
 import time
 import pybullet_data
 import random, numpy, math, time
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from IPython.display import display, HTML
-import pybullet as pb
-# import tensorflow as tf
-# from tensorflow.python.keras.models import Sequential
-# from tensorflow.python.keras.layers import Dense
-# from tensorflow.python.keras.layers import LSTM
-# from tensorflow.python.keras.optimizers import RMSprop
+import os
 
-####################
-# Окружение (игра)
-####################
+useNullSpace = 1
+ikSolver = 0
+pandaEndEffectorIndex = 11 #8
+pandaNumDofs = 7
+ll = [-7]*pandaNumDofs
+#upper limits for null space (todo: set them to proper range)
+ul = [7]*pandaNumDofs
+#joint ranges for null space (todo: set them to proper range)
+jr = [7]*pandaNumDofs
+jointPositions=[0.98, 0.458, 0.31, -2.24, -0.30, 2.66, 2.32, 0.02, 0.02]
 
-MAX_STEPS = 1000  # максимальное количество шагов симуляции
-STEPS_AFTER_TARGET = 30  # количество шагов симуляции после достижения цели
-TARGET_DELTA = 0.2  # величина приемлемого качения возле цели (абсолютное значение)
-FORCE_DELTA = 0.1  # шаг измениния силы (абсолютное значение)
-PB_BallMass = 1  # масса шара
-PB_BallRadius = 0.2  # радиус шара
-PB_HEIGHT = 10  # максимальная высота поднятия шара
-MAX_FORCE = 20  # максимальная вертикальная сила пиложенная к шару
-MIN_FORCE = 0  # минимальнпая сила пиложенная к шару
-MAX_VEL = 14.2  # максимальная вертикальная скорость шара
-MIN_VEL = -14.2  # минимальная вертикальная скорость шара
-
-
+rp = jointPositions
 class Environment:
     def __init__(self):
-        # текущее состояние окружения
-        self.pb_z = 0  # текущая высота шара
-        self.pb_force = 0  # текущая сила приложенная к шару
-        self.pb_velocity = 0  # текущая вертикальная скорость шара
-        self.z_target = 0  # целевая высота
-        self.start_time = 0  # время начала новой игры
-        self.steps = 0  # количество шагов после начала симуляции
-        self.target_area = 0  # факт достежения цели
-        self.steps_after_target = 0  # количество шагов после достежения цели
+        p.connect(p.GUI)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        p.setGravity(0, 0, -1)
+        orientation = p.getQuaternionFromEuler([0, 0, 0])
+        self.panda = p.loadURDF("franka_panda/panda.urdf",
+                                useFixedBase=True,
+                                basePosition=[0, 0, 0.5],
+                                baseOrientation=orientation)
+        self.plane = p.loadURDF("plane.urdf")
+        self.lego = p.loadURDF("lego/lego.urdf", basePosition=[0.5, 0.5, 0.6])
+        self.gripper_height = 0.2 + 0.5
+        self.state = 0
+        self.control_dt = 1. / 240.
+        self.finger_target = 0
+        self.offset = [0, 0, 0]
+        c = p.createConstraint(self.panda,
+                               9,
+                               self.panda,
+                               10,
+                               jointType=p.JOINT_GEAR,
+                               jointAxis=[1, 0, 0],
+                               parentFramePosition=[0, 0, 0],
+                               childFramePosition=[0, 0, 0])
+        p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
+        p.setAdditionalSearchPath(os.getcwd())
 
-        # создадим симуляцию
-        self.pb_physicsClient = pb.connect(pb.GUI)
+        self.surface = p.loadURDF("assets/cube.urdf", basePosition=[0.25, 0, 0.25], useFixedBase=True)
+        self.end_position = p.loadURDF("assets/position.urdf", basePosition=[0.6, 0.5, 0.525], useFixedBase=True)
+        self.start_position = p.loadURDF("assets/position.urdf", basePosition=[0.6, -0.5, 0.525], useFixedBase=True)
+        p.changeVisualShape(self.end_position, -1, rgbaColor=[0, 1, 0, 0.3])
+        p.changeVisualShape(self.start_position, -1, rgbaColor=[1, 0, 0, 0.3])
+        self.border = p.loadURDF("assets/border.urdf", basePosition=[0.25, 0, 0.525], useFixedBase=True)
+
+        index = 0
+
+        for j in range(p.getNumJoints(self.panda)):
+            p.changeDynamics(self.panda, j, linearDamping=0, angularDamping=0)
+            info = p.getJointInfo(self.panda, j)
+            # print("info=",info)
+            jointName = info[1]
+            jointType = info[2]
+            if (jointType == p.JOINT_PRISMATIC):
+                p.resetJointState(self.panda, j, jointPositions[index])
+                index = index + 1
+            if (jointType == p.JOINT_REVOLUTE):
+                p.resetJointState(self.panda, j, jointPositions[index])
+                index = index + 1
+        self.t = 0.
 
     def reset(self):
-        # случайные высота шара и целевая высота
-        z_target = random.uniform(0.01, 0.99)
-        self.z_target = PB_BallRadius + z_target * PB_HEIGHT
-        z = random.uniform(0.05, 0.95)
-        self.pb_z = PB_BallRadius + z * PB_HEIGHT
+        pass
 
-        # сброс параметров окружения
-        pb.resetSimulation()
-        self.target_area = 0
-        self.start_time = time.time()
-        self.steps = 0
-        self.steps_after_target = 0
+    def update_state(self):
+        keys = p.getKeyboardEvents()
+        if len(keys) > 0:
+            for k, v in keys.items():
+                if v & p.KEY_WAS_TRIGGERED:
+                    if k == ord('1'):
+                        self.state = 1
+                    if k == ord('2'):
+                        self.state = 2
+                    if k == ord('3'):
+                        self.state = 3
+                    if k == ord('4'):
+                        self.state = 4
+                    if k == ord('5'):
+                        self.state = 5
+                    if k == ord('6'):
+                        self.state = 6
+                if v & p.KEY_WAS_RELEASED:
+                    self.state = 0
 
-        # шаг симуляции 1/60 сек.
-        pb.setTimeStep(1. / 60)
+    def step(self):
+        p.stepSimulation()
+        self.update_state()
+        time.sleep(1. / 240.)
 
-        # поверхность
-        floorColShape = pb.createCollisionShape(pb.GEOM_PLANE)
-        # для GEOM_PLANE, visualShape - не отображается, будем использовать GEOM_BOX
-        floorVisualShapeId = pb.createVisualShape(pb.GEOM_BOX, halfExtents=[100, 100, 0.0001], rgbaColor=[1, 1, .98, 1])
-        self.pb_floorId = pb.createMultiBody(0, floorColShape, floorVisualShapeId, [0, 0, 0],
-                                             [0, 0, 0, 1])  # (mass,collisionShape,visualShape)
+        alpha = 0.9
+        if self.state == 1 or self.state == 2 or self.state == 3 or self.state == 4 or self.state == 7:
+            # gripper_height = 0.034
+            self.gripper_height = alpha * self.gripper_height + (1. - alpha) * 0.03
+            if self.state == 2 or self.state == 3 or self.state == 7:
+                self.gripper_height = alpha * self.gripper_height + (1. - alpha) * 0.2
 
-        # шар
-        ballPosition = [0, 0, self.pb_z]
-        ballOrientation = [0, 0, 0, 1]
-        ballColShape = pb.createCollisionShape(pb.GEOM_SPHERE, radius=PB_BallRadius)
-        ballVisualShapeId = pb.createVisualShape(pb.GEOM_SPHERE, radius=PB_BallRadius, rgbaColor=[0.25, 0.75, 0.25, 1])
-        self.pb_ballId = pb.createMultiBody(PB_BallMass, ballColShape, ballVisualShapeId, ballPosition,
-                                            ballOrientation)  # (mass, collisionShape, visualShape, ballPosition, ballOrientation)
-        # pb.changeVisualShape(self.pb_ballId,-1,rgbaColor=[1,0.27,0,1])
+            t = self.t
+            self.t += self.control_dt
+            pos = [self.offset[0] + 0.2 * math.sin(1.5 * t), self.offset[1] + self.gripper_height,
+                   self.offset[2] + -0.6 + 0.1 * math.cos(1.5 * t)]
+            if self.state == 3 or self.state == 4:
+                pos, o = p.getBasePositionAndOrientation(self.lego)
+                pos = [pos[0], self.gripper_height, pos[2]]
+                self.prev_pos = pos
+            if self.state == 7:
+                pos = self.prev_pos
+                diffX = pos[0] - self.offset[0]
+                diffZ = pos[2] - (self.offset[2] - 0.6)
+                self.prev_pos = [self.prev_pos[0] - diffX * 0.1, self.prev_pos[1], self.prev_pos[2] - diffZ * 0.1]
 
-        # указатель цели (без CollisionShape, только отображение(VisualShape))
-        targetPosition = [0, 0, self.z_target]
-        targetOrientation = [0, 0, 0, 1]
-        targetVisualShapeId = pb.createVisualShape(pb.GEOM_BOX, halfExtents=[1, 0.025, 0.025], rgbaColor=[0, 0, 0, 1])
-        self.pb_targetId = pb.createMultiBody(0, -1, targetVisualShapeId, targetPosition, targetOrientation)
+            orn = p.getQuaternionFromEuler([math.pi / 2., 0., 0.])
+            p.submitProfileTiming("IK")
+            jointPoses = p.calculateInverseKinematics(self.panda, pandaEndEffectorIndex, pos, orn, ll, ul,
+                                                                       jr, rp, maxNumIterations=20)
+            p.submitProfileTiming()
+            for i in range(pandaNumDofs):
+                p.setJointMotorControl2(self.panda, i, p.POSITION_CONTROL, jointPoses[i],
+                                                         force=5 * 240.)
+            # target for fingers
+        for i in [9, 10]:
+            p.setJointMotorControl2(self.panda, i, p.POSITION_CONTROL, self.finger_target,
+                                                     force=10)
+        p.submitProfileTiming()
 
-        # гравитация
-        pb.setGravity(0, 0, -10)
-
-        # ограничим движение шара только по вертикальной оси
-        pb.createConstraint(self.pb_floorId, -1, self.pb_ballId, -1, pb.JOINT_PRISMATIC, [0, 0, 1], [0, 0, 0],
-                            [0, 0, 0])
-
-        # установим действующую силу на шар, чтобы компенсировать гравитацию
-        self.pb_force = 10 * PB_BallMass
-        pb.applyExternalForce(self.pb_ballId, -1, [0, 0, self.pb_force], [0, 0, 0], pb.LINK_FRAME)
-
-        # return values
-        observation = self.getObservation()
-        reward, done = self.getReward()
-        info = self.getInfo()
-        return [observation, reward, done, info]
-
-    # Наблюдения (возвращаются нормализованными)
-    def getObservation(self):
-        # расстояние до цели
-        d_target = 0.5 + (self.pb_z - self.z_target) / (2 * PB_HEIGHT)
-        # действующая сила
-        force = (self.pb_force - MIN_FORCE) / (MAX_FORCE - MIN_FORCE)
-        # текущая высота шара
-        z = (self.pb_z - PB_BallRadius) / PB_HEIGHT
-        # текущая скорость
-        z_velocity = (self.pb_velocity - MIN_VEL) / (MAX_VEL - MIN_VEL)
-        state = [d_target, force, z_velocity]
-        return state
-
-    # вычисление награды за действие
-    def getReward(self):
-        done = False
-        z_reward = 0
-        # Факт достижения цели, после чего ждем STEPS_AFTER_TARGET шагов и завершем игру.
-        if (TARGET_DELTA >= math.fabs(self.z_target - self.pb_z)):
-            self.target_area = 1
-            z_reward = 1
-        # Выход за пределы зоны
-        if (self.pb_z > (PB_HEIGHT + PB_BallRadius) or self.pb_z < PB_BallRadius):
-            done = True
-        # Завершение игры после достижения цели
-        if (self.target_area > 0):
-            self.steps_after_target += 1
-            if (self.steps_after_target >= STEPS_AFTER_TARGET):
-                done = True
-        # Завершение игры по таймауту
-        if (self.steps >= MAX_STEPS):
-            done = True
-
-        return [z_reward, done]
-
-    # Дополнительная информация для сбора статистики
-    def getInfo(self):
-        game_time = time.time() - self.start_time
-        if game_time:
-            fps = round(self.steps / game_time)
-        return {'step': self.steps, 'fps': fps}
-
-    # Запуск шага симуляции согласно переданному действию
-    def step(self, action):
-        self.steps += 1
-        if action == 0:
-            # 0 - увеличение приложеной силы
-            self.pb_force -= FORCE_DELTA
-            if self.pb_force < MIN_FORCE:
-                self.pb_force = MIN_FORCE
-        else:
-            # 1 - уменьшение приложенной силы
-            self.pb_force += FORCE_DELTA
-            if self.pb_force > MAX_FORCE:
-                self.pb_force = MAX_FORCE
-
-        # изменим текущую сил и запустим шаг симуляции
-        pb.applyExternalForce(self.pb_ballId, -1, [0, 0, self.pb_force], [0, 0, 0], pb.LINK_FRAME)
-        pb.stepSimulation()
-
-        # обновим парамтры состояния окружения (положение и скорость шара)
-        curPos, curOrient = pb.getBasePositionAndOrientation(self.pb_ballId)
-        lin_vel, ang_vel = pb.getBaseVelocity(self.pb_ballId)
-        self.pb_z = curPos[2]
-        self.pb_velocity = lin_vel[2]
-
-        # вернем наблюдения, награду, факт окончания игры и доп.информацию
-        observation = self.getObservation()
-        reward, done = self.getReward()
-        info = self.getInfo()
-        return [observation, reward, done, info]
-
-    # Текущее изображение с камеры
-    def render(self):
-        camTargetPos = [0, 0, 5]  # расположение цели (фокуса) камеры
-        camDistance = 10  # дистанция камеры от цели
-        yaw = 0  # угол рыскания относительно цели
-        pitch = 0  # наклон камеры относительно цели
-        roll = 0  # угол крена камеры относительно цели
-        upAxisIndex = 2  # ось вертикали камеры (z)
-
-        fov = 60  # угол зрения камеры
-        nearPlane = 0.01  # расстояние до ближней плоскости отсечения
-        farPlane = 20  # расстояние до дальной плоскости отсечения
-        pixelWidth = 320  # ширина изображения
-        pixelHeight = 200  # высота изображения
-        aspect = pixelWidth / pixelHeight  # соотношение сторон изображения
-
-        # видовая матрица
-        viewMatrix = pb.computeViewMatrixFromYawPitchRoll(camTargetPos, camDistance, yaw, pitch, roll, upAxisIndex)
-        # проекционная матрица
-        projectionMatrix = pb.computeProjectionMatrixFOV(fov, aspect, nearPlane, farPlane);
-        # рендеринг изображения с камеры
-        img_arr = pb.getCameraImage(pixelWidth, pixelHeight, viewMatrix, projectionMatrix, shadow=0,
-                                    lightDirection=[0, 1, 1], renderer=pb.ER_TINY_RENDERER)
-        w = img_arr[0]  # width of the image, in pixels
-        h = img_arr[1]  # height of the image, in pixels
-        rgb = img_arr[2]  # color data RGB
-        dep = img_arr[3]  # depth data
-
-        # вернем rgb матрицу
-        return rgb
 
 env = Environment()
 env.reset()
-# env.render()
-for i in range (10000):
-    pb.stepSimulation()
-    time.sleep(1./60.)
-# cubePos, cubeOrn = pb.getBasePositionAndOrientation(boxId)
-# print(cubePos,cubeOrn)
-pb.disconnect()
+while (1):
+    env.step()
