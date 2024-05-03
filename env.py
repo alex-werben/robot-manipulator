@@ -105,7 +105,7 @@ class Environment(gym.Env):
         p.setJointMotorControlArray(self.panda, list(range(7)) + [9, 10], p.POSITION_CONTROL,
                                     list(joint_poses) + 2 * [fingers])
         p.stepSimulation()
-        time.sleep(1/ 240.)
+        # time.sleep(1/ 240.)
 
         # Calculate reward and observation
         state_object = np.array(p.getBasePositionAndOrientation(self.object)[0])

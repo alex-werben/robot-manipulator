@@ -5,12 +5,16 @@ https://medium.com/@eyyu/coding-ppo-from-scratch-with-pytorch-part-1-4-613dfc1b1
 
 import gym
 import sys
+
+import pybullet
 import torch
 
 from arguments import get_args
 from ppo import PPO
 from network import FeedForwardNN
 from eval_policy import eval_policy
+from env import Environment
+from envs.panda_env import PandaEnv
 
 
 def train(env, hyperparameters, actor_model, critic_model):
@@ -49,10 +53,10 @@ def train(env, hyperparameters, actor_model, critic_model):
     # Train the PPO model with a specified total timesteps
     # NOTE: You can change the total timesteps here, I put a big number just because
     # you can kill the process whenever you feel like PPO is converging
-    model.learn(total_timesteps=200_000_000)
+    model.learn(total_timesteps=1_000_000)
 
 
-def test(env, actor_model):
+def test(env, actor_model, render):
     """
         Tests the model.
 
@@ -84,7 +88,7 @@ def test(env, actor_model):
     # that once we are done training the model/policy with ppo.py, we no longer need
     # ppo.py since it only contains the training algorithm. The model/policy itself exists
     # independently as a binary file that can be loaded in with torch.
-    eval_policy(policy=policy, env=env, render=True)
+    eval_policy(policy=policy, env=env, render=render)
 
 
 def main(args):
@@ -107,20 +111,23 @@ def main(args):
         'n_updates_per_iteration': 10,
         'lr': 3e-4,
         'clip': 0.2,
-        'render': True,
-        'render_every_i': 10
+        'render': False,
+        'render_every_i': 10,
+        'mode': pybullet.DIRECT
     }
 
     # Creates the environment we'll be running. If you want to replace with your own
     # custom environment, note that it must inherit Gym and have both continuous
     # observation and action spaces.
-    env = gym.make('Pendulum-v0')
-
+    # env = gym.make('MountainCarContinuous-v0')
+    # env.reset()
+    # env = Environment()
+    env = PandaEnv(hyperparameters['mode'])
     # Train or test, depending on the mode specified
     if args.mode == 'train':
         train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
     else:
-        test(env=env, actor_model=args.actor_model)
+        test(env=env, actor_model=args.actor_model, render=hyperparameters['render'])
 
 
 if __name__ == '__main__':
