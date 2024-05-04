@@ -113,7 +113,6 @@ def main(args):
         'clip': 0.2,
         'render': False,
         'render_every_i': 10,
-        'mode': pybullet.DIRECT
     }
 
     # Creates the environment we'll be running. If you want to replace with your own
@@ -122,11 +121,13 @@ def main(args):
     # env = gym.make('MountainCarContinuous-v0')
     # env.reset()
     # env = Environment()
-    env = PandaEnv(hyperparameters['mode'])
+    # env = PandaEnv(pybullet.GUI) if hyperparameters['render'] else PandaEnv(pybullet.DIRECT)
     # Train or test, depending on the mode specified
     if args.mode == 'train':
+        env = PandaEnv(pybullet.DIRECT)
         train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
     else:
+        env = PandaEnv(pybullet.GUI)
         test(env=env, actor_model=args.actor_model, render=hyperparameters['render'])
 
 
