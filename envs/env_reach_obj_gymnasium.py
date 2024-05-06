@@ -22,20 +22,21 @@ class Environment(gym.Env):
 
     def __init__(self, mode):
         super().__init__()
+        self.object = None
+        self.c1 = 10
+        self.surface = None
+        self.plane = None
         self.step_counter = 0
+        self.threshold = 0.05
         self.observation = None
         p.connect(mode)
         self.reset()
 
-        # self.action_space = spaces.Box(np.array([-1] * 3), np.array([1] * 3))
         self.action_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
-        # self.observation_space = spaces.Box(np.array([-1] * 3), np.array([1] * 3))
 
     def reset(self, seed=None, options=None):
-        self.threshold = 0.05
         self.step_counter = 0
-        self.cost_counter = 0
         p.resetSimulation()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -65,10 +66,9 @@ class Environment(gym.Env):
 
         # surface, other objects
         p.setAdditionalSearchPath(os.getcwd())
-        self.surface = p.loadURDF("../assets/cube.urdf", basePosition=[0.25, 0, -0.25], useFixedBase=True)
+        self.surface = p.loadURDF("assets/cube.urdf", basePosition=[0.25, 0, -0.25], useFixedBase=True)
         state_object = np.array([0.5, 0.1, 0.05]).astype(np.float32)
-        self.object = p.loadURDF("../assets/block.urdf", basePosition=state_object)
-        self.c1 = 10
+        self.object = p.loadURDF("assets/block.urdf", basePosition=state_object)
 
         # Debug print axes
         p.addUserDebugText('X', [1, 0, 0], [0, 0, 0])
@@ -82,7 +82,7 @@ class Environment(gym.Env):
 
         return observation, info
 
-    def step(self, action: List):
+    def step(self, action):
         p.configureDebugVisualizer(p.COV_ENABLE_SINGLE_STEP_RENDERING)
 
         state_grasp_prev = p.getLinkState(self.panda, panda_end_effector_index)
@@ -111,9 +111,11 @@ class Environment(gym.Env):
         pos_new = state_grasp[0]
 
         # reward
-        r_g = -np.linalg.norm(pos_new - pos_obj_new)
+        # r_g = -np.linalg.norm(pos_new - pos_obj_new)
 
-        reward = self.c1 * r_g
+        # reward = self.c1 * r_g
+        result = [abs(pos_new[i] - pos_obj_new[i]) for i in range(len(pos_new))]
+        reward = -sum(result)
 
         terminated = False
         truncated = False
