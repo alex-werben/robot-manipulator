@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: gym-envs
+Version: 0.0.1
+Summary: My test envs
+Description-Content-Type: text/markdown
+Requires-Dist: gymnasium
+
+# Alex-Werben envs v0.

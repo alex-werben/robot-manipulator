@@ -1,136 +1,66 @@
-"""
-This file is the executable for running PPO. It is based on this medium article:
-https://medium.com/@eyyu/coding-ppo-from-scratch-with-pytorch-part-1-4-613dfc1b14c8
-"""
+import multiprocessing
+import os
+import time
 
-import gym
-import sys
+import gymnasium as gym
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
-import pybullet
-import torch
+from src.callback import SaveOnBestTrainingRewardCallback
+from src.utils import prepare_directory_for_results, prepare_model, make_env
 
-from arguments import get_args
-from ppo import PPO
-from network import FeedForwardNN
-from eval_policy import eval_policy
-from env import Environment
-from envs.panda_env import PandaEnv
+import panda_gym
+import gym_envs
+# from panda_gym.envs import PandaReachEnv
 
 
-def train(env, hyperparameters, actor_model, critic_model):
-    """
-    Trains the model.
+def train(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
+	num_cpu = multiprocessing.cpu_count()
+	log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name)
 
-    Parameters:
-        env - the environment to train on
-        hyperparameters - a dict of hyperparameters to use, defined in main
-        actor_model - the actor model to load in if we want to continue training
-        critic_model - the critic model to load in if we want to continue training
+	env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
 
-    Return:
-        None
-    """
-    print(f"Training", flush=True)
+	callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir, model_dir=model_dir, verbose=1)
 
-    # Create a model for PPO.
-    model = PPO(policy_class=FeedForwardNN, env=env, **hyperparameters)
+	model_cls = prepare_model(model_name)
+	model = model_cls('MlpPolicy', env)
 
-    # Tries to load in an existing actor/critic model to continue training on
-    if actor_model != '' and critic_model != '':
-        print(f"Loading in {actor_model} and {critic_model}...", flush=True)
-        model.actor.load_state_dict(torch.load(actor_model))
-        model.critic.load_state_dict(torch.load(critic_model))
-        print(f"Successfully loaded.", flush=True)
-    elif actor_model != '' or critic_model != '':
-        # Don't train from scratch if user accidentally forgets actor/critic model
-        print(
-            f"Error: Either specify both actor/critic models or none at all."
-            f"We don't want to accidentally override anything!")
-        sys.exit(0)
-    else:
-        print(f"Training from scratch.", flush=True)
-
-    # Train the PPO model with a specified total timesteps
-    # NOTE: You can change the total timesteps here, I put a big number just because
-    # you can kill the process whenever you feel like PPO is converging
-    model.learn(total_timesteps=1_000_000)
+	model.learn(total_timesteps=int(1e5), callback=callback, progress_bar=True)
+	model.save(model_dir + "/end_model.zip")
 
 
-def test(env, actor_model, render):
-    """
-        Tests the model.
+def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
+	_, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name)
+	env = gym.make(env_id, render_mode="human")
 
-        Parameters:
-            env - the environment to test the policy on
-            actor_model - the actor model to load in
+	model_cls = prepare_model(model_name)
+	model = model_cls('MlpPolicy', env)
+	model.load(model_dir + "/end_model.zip")
 
-        Return:
-            None
-    """
-    print(f"Testing {actor_model}", flush=True)
-
-    # If the actor model is not specified, then exit
-    if actor_model == '':
-        print(f"Didn't specify model file. Exiting.", flush=True)
-        sys.exit(0)
-
-    # Extract out dimensions of observation and action spaces
-    obs_dim = env.observation_space.shape[0]
-    act_dim = env.action_space.shape[0]
-
-    # Build our policy the same way we build our actor model in PPO
-    policy = FeedForwardNN(obs_dim, act_dim)
-
-    # Load in the actor model saved by the PPO algorithm
-    policy.load_state_dict(torch.load(actor_model))
-
-    # Evaluate our policy with a separate module, eval_policy, to demonstrate
-    # that once we are done training the model/policy with ppo.py, we no longer need
-    # ppo.py since it only contains the training algorithm. The model/policy itself exists
-    # independently as a binary file that can be loaded in with torch.
-    eval_policy(policy=policy, env=env, render=render)
-
-
-def main(args):
-    """
-        The main function to run.
-
-        Parameters:
-            args - the arguments parsed from command line
-
-        Return:
-            None
-    """
-    # NOTE: Here's where you can set hyperparameters for PPO. I don't include them as part of ArgumentParser because
-    # it's too annoying to type them every time at command line. Instead, you can change them here. To see a list of
-    # hyperparameters, look in ppo.py at function _init_hyperparameters
-    hyperparameters = {
-        'timesteps_per_batch': 2048,
-        'max_timesteps_per_episode': 200,
-        'gamma': 0.99,
-        'n_updates_per_iteration': 10,
-        'lr': 3e-4,
-        'clip': 0.2,
-        'render': False,
-        'render_every_i': 10,
-    }
-
-    # Creates the environment we'll be running. If you want to replace with your own
-    # custom environment, note that it must inherit Gym and have both continuous
-    # observation and action spaces.
-    # env = gym.make('MountainCarContinuous-v0')
-    # env.reset()
-    # env = Environment()
-    # env = PandaEnv(pybullet.GUI) if hyperparameters['render'] else PandaEnv(pybullet.DIRECT)
-    # Train or test, depending on the mode specified
-    if args.mode == 'train':
-        env = PandaEnv(pybullet.DIRECT)
-        train(env=env, hyperparameters=hyperparameters, actor_model=args.actor_model, critic_model=args.critic_model)
-    else:
-        env = PandaEnv(pybullet.GUI)
-        test(env=env, actor_model=args.actor_model, render=hyperparameters['render'])
+	deterministic = True
+	# evaluate_policy(
+	# 	model,
+	# 	env,
+	# 	n_eval_episodes=10,
+	# 	render=True,
+	# 	deterministic=deterministic
+	# )
+	observations, state = env.reset()
+	observations = observations
+	states = None
+	while True:
+		actions, states = model.predict(
+			observations,
+			state=states,
+			deterministic=deterministic,
+		)
+		new_observations, rewards, terminated, truncated, infos = env.step(actions)
+		observations = new_observations
 
 
 if __name__ == '__main__':
-    args = get_args()  # Parse arguments from command line
-    main(args)
+	# train("P-v2", "DDPG")
+	# test("CartPole-v1", "A2C")
+	# test("PandaReach-v2", "DDPG")
+	# train("PandaReachObjEnv-v0", "PPO")
+	test("PandaReachObjEnv-v0", "PPO")
