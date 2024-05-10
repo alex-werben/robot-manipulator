@@ -38,47 +38,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                     # Example for saving best model
                     if self.verbose > 0:
                         print(f"Saving new best model to {self.save_path}, current timestep: {self.n_calls * 12}")
-                    self.model.save(self.save_path + f"_{self.n_calls * 12}.zip")
+                    self.model.save(self.model_dir + f"/best_model_{self.n_calls * 12}.zip")
+                    self.model.save_replay_buffer(self.model_dir + f"/replay_buffer_{self.n_calls * 12}.pkl")
 
         return True
-
-from stable_baselines3.common.logger import HParam
-
-
-class HParamCallback(BaseCallback):
-    """
-    Saves the hyperparameters and metrics at the start of the training, and logs them to TensorBoard.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def _on_training_start(self) -> None:
-        self.hparam_dict = {
-            "algorithm": self.model.__class__.__name__,
-            "learning rate": self.model.learning_rate,
-            "gamma": self.model.gamma,
-        }
-        # define the metrics that will appear in the `HPARAMS` Tensorboard tab by referencing their tag
-        # Tensorbaord will find & display metrics from the `SCALARS` tab
-        self.metric_dict = {
-            "rollout/ep_len_mean": 0,
-        }
-        self.logger.record(
-            "hparams",
-            HParam(self.hparam_dict, self.metric_dict),
-            # exclude=("log", "json", "csv"),
-        )
-        # logs_path = os.path.join(self.logdir, self.model.__class__.__name__ + "_0")
-        # # save these hyperparameters as logs
-        # with tf.summary.create_file_writer(logs_path).as_default():
-        #     hp.hparams(hparams)
-        # self._done = True
-
-    def _on_step(self) -> bool:
-        self.logger.record(
-            "hparams",
-            HParam(self.hparam_dict, self.metric_dict),
-            # exclude=("log", "json", "csv"),
-        )
-        return True
-

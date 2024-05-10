@@ -1,124 +1,85 @@
 import multiprocessing
 import os
-import time
+
+import torch
+import yaml
 
 import gymnasium as gym
 from stable_baselines3 import PPO, DDPG, HerReplayBuffer
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from src.callback import SaveOnBestTrainingRewardCallback, HParamCallback
+from src.callback import SaveOnBestTrainingRewardCallback
 from src.utils import prepare_directory_for_results, prepare_model, make_env
 
 import panda_gym
-import gym_envs
 
 
-def train_her(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO",
-			  build_name: str = "build",
-			  train_from_scratch: bool = True,
-			  total_timesteps: int = 1_000_000):
-	num_cpu = multiprocessing.cpu_count()
-	log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, build_name)
+def train(env_id: str = "PandaReach-v3",
+          model_name: str = "DDPG",
+          train_from_scratch: bool = True,
+          model_to_load_path: str = None,
+          params: dict = None):
 
-	# model_cls = prepare_model(model_name)
-	callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir, model_dir=model_dir, verbose=1)
-	env = SubprocVecEnv([make_env(env_id, i, log_dir, train_from_scratch) for i in range(num_cpu)])
+    log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, params['build_name'])
 
-	model = DDPG(
-		policy='MultiInputPolicy',
-		env=env,
-		batch_size=2048,
-		buffer_size=1_000_000,
-		tau=0.05,
-		gamma=0.95,
-		learning_rate=0.001,
-		learning_starts=1000,
-		replay_buffer_class=HerReplayBuffer,
-		replay_buffer_kwargs=dict(
-			n_sampled_goal=4,
-			goal_selection_strategy="future",
-			# online_sampling=True,
-		),
-		policy_kwargs=dict(
-			net_arch=[512, 512, 512],
-			n_critics=2
-		),
-		tensorboard_log=log_dir
-	)
-	model.learn(total_timesteps=total_timesteps, callback=callback, progress_bar=True, tb_log_name=build_name)
-	model.save(model_dir + "/end_model.zip")
+    # Multiprocessing
+    num_cpu = multiprocessing.cpu_count()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # Vectorized environments
+    env = SubprocVecEnv([make_env(env_id, i, log_dir, train_from_scratch) for i in range(num_cpu)])
+    # Callback to save best model during learning
+    save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000,
+                                                     log_dir=log_dir,
+                                                     model_dir=model_dir,
+                                                     verbose=1)
+    # Prepare model classes
+    model_cls = prepare_model(params['model_name'])
+    replay_buffer_class = prepare_model(params['replay_buffer_class'])
+    # Train from scratch or keep training with existing model
+    if train_from_scratch:
+        model = model_cls(env=env,
+                          tensorboard_log=log_dir,
+                          device=device,
+                          replay_buffer_class=replay_buffer_class,
+                          **params['model_params'])
+        reset_num_timesteps = True
+    else:
+        model = model_cls.load(log_dir + model_to_load_path, env=env, device=device)
+        reset_num_timesteps = False
 
+    model.learn(**params['learn_params'],
+                callback=save_callback,
+                progress_bar=True,
+                reset_num_timesteps=reset_num_timesteps)
+    model.save(model_dir + "/end_model.zip")
+    model.save_replay_buffer(model_dir + "/env_replay_buffer.pkl")
 
-def test_her(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
-	_, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name)
-
-	env = gym.make(env_id, render_mode="human")
-	model_cls = prepare_model(model_name)
-	model = model_cls.load(model_dir + "/end_model.zip", env=env)
-	# model = PPO.load(model_dir + "/best_model.zip", env=env)
-	deterministic = True
-	evaluate_policy(
-		model,
-		env,
-		n_eval_episodes=100,
-		render=True,
-		deterministic=deterministic
-	)
-
-
-def train(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO",
-		  build_name: str = "my_build",
-		  train_from_scratch: bool = True,
-		  total_timesteps: int = 1_000_000):
-	num_cpu = multiprocessing.cpu_count()
-	log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, build_name)
-
-	env = SubprocVecEnv([make_env(env_id, i, log_dir, train_from_scratch) for i in range(num_cpu)])
-
-	callback = SaveOnBestTrainingRewardCallback(check_freq=100, log_dir=log_dir, model_dir=model_dir, verbose=1)
-	model_cls = prepare_model(model_name)
-	if train_from_scratch:
-		# model = model_cls('MultiInputPolicy', env)
-		model = model_cls(
-			'MultiInputPolicy',
-			env,
-			batch_size=2048,
-			learning_starts=1000,
-			gamma=0.95,
-			tau=0.05,
-			verbose=0,
-			tensorboard_log=log_dir
-		)
-		model.learn(total_timesteps=total_timesteps, callback=HParamCallback(),
-					progress_bar=True, tb_log_name=build_name)
-	else:
-		model = model_cls.load(log_dir + "/end_model.zip", env=env)
-		model.learn(total_timesteps=total_timesteps, callback=callback,
-					progress_bar=True, tb_log_name="test_run",
-					reset_num_timesteps=False)
-	model.save(model_dir + "/end_model.zip")
 
 
 def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
-	_ = prepare_directory_for_results(os.getcwd(), env_id, model_name, "aa")
+    _ = prepare_directory_for_results(os.getcwd(), env_id, model_name, "aa")
 
-	env = gym.make("PandaSlide-v3", render_mode="human")
-	model_cls = prepare_model(model_name)
-	# model = model_cls.load(model_dir + "/best_model.zip")
-	model = model_cls('MultiInputPolicy', env)
-	deterministic = False
-	evaluate_policy(
-		model,
-		env,
-		n_eval_episodes=100,
-		render=True,
-		deterministic=deterministic
-	)
+    env = gym.make("PandaSlide-v3", render_mode="human")
+    model_cls = prepare_model(model_name)
+    # model = model_cls.load(model_dir + "/best_model.zip")
+    model = model_cls('MultiInputPolicy', env)
+    deterministic = False
+    evaluate_policy(
+        model,
+        env,
+        n_eval_episodes=100,
+        render=True,
+        deterministic=deterministic
+    )
+
 
 if __name__ == '__main__':
-	train_her("PandaSlide-v3", "DDPG", build_name="first_build", train_from_scratch=True)
-	# test("PandaSlide-v3")
-	# train("PandaReach-v3", model_name="DDPG", train_from_scratch=True, total_timesteps=20_000)
-# train("PandaPush-v3", model_name="PPO", train_from_scratch=True, total_timesteps=1_000_000)
-# test_her("PandaPush-v3", "DDPG")
+    config_path = "configs/panda-pick-and-place.yaml"
+    with open(config_path) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    train(env_id="PandaPickAndPlace-v3",
+          model_name="DDPG",
+          train_from_scratch=True,
+          params=config)

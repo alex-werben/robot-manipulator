@@ -1,0 +1,29 @@
+
+model_name: DDPG
+
+build_name: 'default'
+
+model_params:
+  batch_size: 2048
+  buffer_size: 1000000
+  gamma: 0.95
+  learning_rate: 0.001
+  learning_starts: 1000
+  tau: 0.05
+  policy: 'MultiInputPolicy'
+  policy_kwargs:
+    net_arch:
+      - 512
+      - 512
+      - 512
+    n_critics: 2
+  replay_buffer_kwargs:
+    goal_selection_strategy: 'future'
+    n_sampled_goal: 4
+
+# extra model_params
+replay_buffer_class: HerReplayBuffer
+
+learn_params:
+  total_timesteps: 3000000
+  tb_log_name: 'default'

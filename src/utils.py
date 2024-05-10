@@ -2,16 +2,17 @@ import os
 import gymnasium as gym
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3 import PPO, DDPG, A2C, SAC
+from stable_baselines3 import PPO, DDPG, A2C, SAC, HerReplayBuffer
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 
-def prepare_model(model_name: str) -> BaseAlgorithm:
+def prepare_model(model_name: str):
 	model_dict = {
 		'PPO': PPO,
 		'DDPG': DDPG,
 		'A2C': A2C,
 		'SAC': SAC,
+		'HerReplayBuffer': HerReplayBuffer,
 	}
 
 	return model_dict[model_name]
