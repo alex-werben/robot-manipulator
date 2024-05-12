@@ -9,11 +9,11 @@ from stable_baselines3 import PPO, DDPG, HerReplayBuffer
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
+from src.arguments import get_args
 from src.callback import SaveOnBestTrainingRewardCallback
 from src.utils import prepare_directory_for_results, prepare_model, make_env
 
 import panda_gym
-import gym_envs
 
 
 def train(env_id: str = "PandaReach-v3",
@@ -21,7 +21,6 @@ def train(env_id: str = "PandaReach-v3",
           train_from_scratch: bool = True,
           model_to_load_path: str = None,
           params: dict = None):
-
     log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, params['build_name'])
 
     # Multiprocessing
@@ -56,7 +55,7 @@ def train(env_id: str = "PandaReach-v3",
                 progress_bar=True,
                 reset_num_timesteps=reset_num_timesteps)
     model.save(model_dir + "/end_model.zip")
-    model.save_replay_buffer(model_dir + "/env_replay_buffer.pkl")
+    model.save_replay_buffer(model_dir + "/end_replay_buffer.pkl")
 
 
 def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO", params: dict = None):
@@ -64,8 +63,8 @@ def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO", params: d
 
     env = gym.make(env_id, render_mode="human")
     model_cls = prepare_model(model_name)
-    model = model_cls.load(model_dir + "/best_model_48000.zip", env=env)
-    model.load_replay_buffer(model_dir + "/replay_buffer_48000.pkl")
+    model = model_cls.load(model_dir + "/end_model.zip", env=env)
+    model.load_replay_buffer(model_dir + "/end_replay_buffer.pkl")
     deterministic = True
     evaluate_policy(
         model,
@@ -91,20 +90,20 @@ def test_env(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
         deterministic=deterministic
     )
 
+
 if __name__ == '__main__':
-    config_path = "configs/panda-pick-and-place.yaml"
+    args = get_args()
+    config_path = args.config
     with open(config_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    train(env_id="PandaPickAndPlace-v3",
-          model_name="DDPG",
-          train_from_scratch=True,
-          model_to_load_path="/end_model.zip",
-          params=config)
-
-    # test(env_id="PandaPickAndPlace-v3",
-    #      model_name="DDPG",
-    #      params=config)
-
-    # test_env(env_id="PandaPickAndPlace-v3",
-    #          model_name="DDPG")
+    if args.mode == "train":
+        train(env_id=args.env,
+              model_name=args.model,
+              train_from_scratch=True,
+              model_to_load_path="/end_model.zip",
+              params=config)
+    else:
+        test(env_id=args.env,
+             model_name=args.model,
+             params=config)
