@@ -2,9 +2,9 @@ from typing import Any, Dict, Callable
 
 import numpy as np
 
-from panda_gym.envs.core import Task
-from panda_gym.pybullet import PyBullet
-from panda_gym.utils import distance
+from gym_envs.envs.core import Task
+from gym_envs.pybullet import PyBullet
+from gym_envs.utils import distance
 
 
 class PickPlaceAvoid(Task):

@@ -7,7 +7,7 @@ import pybullet as p
 import pybullet_data
 import pybullet_utils.bullet_client as bc
 
-import panda_gym.assets
+import gym_envs.assets
 
 
 class PyBullet:
@@ -447,7 +447,7 @@ class PyBullet:
             collision_kwargs=collision_kwargs,
         )
         if texture is not None:
-            texture_path = os.path.join(panda_gym.assets.get_data_path(), texture)
+            texture_path = os.path.join(gym_envs.assets.get_data_path(), texture)
             texture_uid = self.physics_client.loadTexture(texture_path)
             self.physics_client.changeVisualShape(self._bodies_idx[body_name], -1, textureUniqueId=texture_uid)
 

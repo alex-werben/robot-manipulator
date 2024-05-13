@@ -3,8 +3,8 @@ from typing import Optional
 import numpy as np
 from gymnasium import spaces
 
-from panda_gym.envs.core import PyBulletRobot
-from panda_gym.pybullet import PyBullet
+from gym_envs.envs.core import PyBulletRobot
+from gym_envs.pybullet import PyBullet
 
 
 class Panda(PyBulletRobot):

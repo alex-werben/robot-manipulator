@@ -2,16 +2,10 @@ from typing import Optional
 
 import numpy as np
 
-from panda_gym.envs.core import RobotTaskEnv
-from panda_gym.envs.robots.panda import Panda
-from panda_gym.envs.tasks.flip import Flip
-from panda_gym.envs.tasks.pick_and_place import PickAndPlace
-from panda_gym.envs.tasks.push import Push
-from panda_gym.envs.tasks.reach import Reach
-from panda_gym.envs.tasks.slide import Slide
-from panda_gym.envs.tasks.stack import Stack
-from panda_gym.envs.tasks.pick_place_avoid import PickPlaceAvoid
-from panda_gym.pybullet import PyBullet
+from gym_envs.envs.core import RobotTaskEnv
+from gym_envs.envs.robots.panda import Panda
+from gym_envs.envs.tasks.pick_place_avoid import PickPlaceAvoid
+from gym_envs.pybullet import PyBullet
 
 
 class PandaPickPlaceAvoidEnv(RobotTaskEnv):
