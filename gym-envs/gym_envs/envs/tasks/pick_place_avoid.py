@@ -80,11 +80,11 @@ class PickPlaceAvoid(Task):
         return achieved_goal
 
     def get_desired_goal(self) -> np.ndarray:
-        """Return the current goal."""
+        """Return the current goal. [0-2] - pos_goal, [3-5] - pos_obstacle"""
         if self.goal is None:
             raise RuntimeError("No goal yet, call reset() first")
         else:
-            desired_goal = np.concatenate([self.goal.copy(), self.obstacle])
+            desired_goal = np.concatenate([self.goal.copy(), self.obstacle.copy()])
             return desired_goal
             # return self.goal.copy()
 

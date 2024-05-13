@@ -325,14 +325,12 @@ class RobotTaskEnv(gym.Env):
         # terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_desired_goal()))
         terminated = bool(self.task.is_success(observation['achieved_goal'], observation['desired_goal']))
         truncated = False
-        info = {"is_success": terminated,}
+        info = {"is_success": terminated}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
         # print(distance(self.robot.get_ee_position(), self.sim.get_base_position(obstacle_name)))
         has_collision = self.check_collision(self.robot.body_name, obstacle_name)
         if has_collision:
-            terminated = False
-            truncated = True
-            # print("Collision detected!")
+            print("Collision detected!")
 
         return observation, reward, terminated, truncated, info
 
