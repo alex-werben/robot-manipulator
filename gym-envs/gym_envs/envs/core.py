@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Tuple
-
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from gymnasium.utils import seeding
 
 from gym_envs.pybullet import PyBullet
+from gym_envs.utils import distance
 
 
 class PyBulletRobot(ABC):
@@ -319,6 +319,7 @@ class RobotTaskEnv(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
         self.robot.set_action(action)
         self.sim.step()
+        obstacle_name = "obstacle"
         observation = self._get_obs()
         # An episode is terminated iff the agent has reached the target
         # terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_desired_goal()))
@@ -326,6 +327,13 @@ class RobotTaskEnv(gym.Env):
         truncated = False
         info = {"is_success": terminated,}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
+        # print(distance(self.robot.get_ee_position(), self.sim.get_base_position(obstacle_name)))
+        has_collision = self.check_collision(self.robot.body_name, obstacle_name)
+        if has_collision:
+            terminated = False
+            truncated = True
+            # print("Collision detected!")
+
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:
@@ -348,3 +356,7 @@ class RobotTaskEnv(gym.Env):
             pitch=self.render_pitch,
             roll=self.render_roll,
         )
+
+    def check_collision(self, body_1: str, body_2: str) -> bool:
+        contact_points = self.sim.get_contact_points(body_1, body_2)
+        return True if len(contact_points) > 0 else False

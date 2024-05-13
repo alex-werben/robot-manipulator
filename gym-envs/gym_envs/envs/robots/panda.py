@@ -40,7 +40,6 @@ class Panda(PyBulletRobot):
             joint_indices=np.array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
             joint_forces=np.array([87.0, 87.0, 87.0, 87.0, 12.0, 120.0, 120.0, 170.0, 170.0]),
         )
-
         self.fingers_indices = np.array([9, 10])
         self.neutral_joint_values = np.array([0.00, 0.41, 0.00, -1.85, 0.00, 2.26, 0.79, 0.00, 0.00])
         self.ee_link = 11
@@ -142,3 +141,4 @@ class Panda(PyBulletRobot):
     def get_ee_orientation(self) -> np.ndarray:
         """Returns the orientation of the end-effector as (x, y, z, w)"""
         return self.get_link_orientation(self.ee_link)
+

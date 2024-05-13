@@ -29,7 +29,7 @@ def train(env_id: str = "PandaReach-v3",
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     # Vectorized environments
     env = SubprocVecEnv([make_env(env_id, i, log_dir, train_from_scratch) for i in range(num_cpu)])
-    # env = gym.make(env_id)
+    # env = gym.make(env_id, reward_type="dense")
     # Callback to save best model during learning
     save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000,
                                                      log_dir=log_dir,
@@ -40,7 +40,7 @@ def train(env_id: str = "PandaReach-v3",
 
     replay_buffer_class = prepare_model(params['replay_buffer_class']) if 'replay_buffer_class' in params else None
     # Train from scratch or keep training with existing model
-    print(train_from_scratch)
+    # print(train_from_scratch)
     if train_from_scratch:
         model = model_cls(env=env,
                           tensorboard_log=log_dir,
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     if args.mode == "train":
         train(env_id=args.env,
               model_name=args.model,
-              train_from_scratch=False,
+              train_from_scratch=True,
               model_to_load_path="/end_model.zip",
               params=config)
     else:

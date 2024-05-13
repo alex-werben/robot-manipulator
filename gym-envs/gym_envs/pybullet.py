@@ -25,7 +25,7 @@ class PyBullet:
     def __init__(
         self,
         render_mode: str = "rgb_array",
-        n_substeps: int = 2000,
+        n_substeps: int = 20,
         background_color: Optional[np.ndarray] = None,
         renderer: str = "Tiny",
     ) -> None:
@@ -282,6 +282,9 @@ class PyBullet:
             float: The angle.
         """
         return self.physics_client.getJointState(self._bodies_idx[body], joint)[0]
+
+    def get_contact_points(self, body_1: str, body_2: str) -> np.ndarray:
+        return self.physics_client.getContactPoints(self._bodies_idx[body_1], self._bodies_idx[body_2])
 
     def get_joint_velocity(self, body: str, joint: int) -> float:
         """Get the velocity of the joint of the body.

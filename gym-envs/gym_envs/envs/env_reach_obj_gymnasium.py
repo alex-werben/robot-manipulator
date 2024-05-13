@@ -9,18 +9,17 @@ import pybullet_data
 import random
 from typing import List
 
-use_null_space = 1
-ik_solver = 0
-panda_end_effector_index = 11
-panda_num_dofs = 7
 
-MAX_EPISODE_LEN = 500
+
 
 
 class PandaReachObjEnv(gym.Env):
     metadata = {"render_mode": ["human"], "render_fps": 30}
 
     def __init__(self, render_mode):
+        self.MAX_EPISODE_LEN = 500
+
+        self.panda_end_effector_index = 11
         super().__init__()
         self.object = None
         self.c1 = 10
@@ -77,7 +76,7 @@ class PandaReachObjEnv(gym.Env):
         p.addUserDebugText('X', [1, 0, 0], [0, 0, 0])
         p.addUserDebugText('Y', [0, 1, 0], [0, 0, 0])
 
-        state_robot = np.array(p.getLinkState(self.panda, panda_end_effector_index)[0]).astype(np.float32)
+        state_robot = np.array(p.getLinkState(self.panda, self.panda_end_effector_index)[0]).astype(np.float32)
         state_fingers = (p.getJointState(self.panda, 9)[0], p.getJointState(self.panda, 10)[0])
         observation = state_robot + state_object
         info = {}
@@ -88,7 +87,7 @@ class PandaReachObjEnv(gym.Env):
     def step(self, action):
         p.configureDebugVisualizer(p.COV_ENABLE_SINGLE_STEP_RENDERING)
 
-        state_grasp_prev = p.getLinkState(self.panda, panda_end_effector_index)
+        state_grasp_prev = p.getLinkState(self.panda, self.panda_end_effector_index)
         pos_prev = np.array(state_grasp_prev[0])
 
         # Execute action
@@ -101,7 +100,7 @@ class PandaReachObjEnv(gym.Env):
                         pos_prev[1] + dy,
                         pos_prev[2] + dz]
         # print(new_position)
-        joint_poses = p.calculateInverseKinematics(self.panda, panda_end_effector_index, new_position,
+        joint_poses = p.calculateInverseKinematics(self.panda, self.panda_end_effector_index, new_position,
                                                    orientation)[0:7]
 
         p.setJointMotorControlArray(self.panda, list(range(7)), p.POSITION_CONTROL,
@@ -110,7 +109,7 @@ class PandaReachObjEnv(gym.Env):
 
         # Calculate observation
         pos_obj_new = np.array(p.getBasePositionAndOrientation(self.object)[0])
-        state_grasp = p.getLinkState(self.panda, panda_end_effector_index)
+        state_grasp = p.getLinkState(self.panda, self.panda_end_effector_index)
         pos_new = state_grasp[0]
 
         # reward
@@ -128,7 +127,7 @@ class PandaReachObjEnv(gym.Env):
             truncated = True
         # End episode
         self.step_counter += 1
-        if self.step_counter > MAX_EPISODE_LEN or reward > -0.09:
+        if self.step_counter > self.MAX_EPISODE_LEN or reward > -0.09:
             terminated = True
             truncated = True
 

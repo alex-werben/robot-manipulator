@@ -44,7 +44,9 @@ class PandaPickPlaceAvoidEnv(RobotTaskEnv):
     ) -> None:
         sim = PyBullet(render_mode=render_mode, renderer=renderer)
         robot = Panda(sim, block_gripper=False, base_position=np.array([-0.6, 0.0, 0.0]), control_type=control_type)
-        task = PickPlaceAvoid(sim, reward_type=reward_type, get_ee_position=robot.get_ee_position)
+        task = PickPlaceAvoid(sim,
+                              reward_type=reward_type,
+                              get_ee_position=robot.get_ee_position)
         super().__init__(
             robot,
             task,
