@@ -15,9 +15,9 @@ class PickPlaceAvoid(Task):
         get_ee_position: Callable = None,
         check_collision: Callable = None,
         distance_threshold: float = 0.05,
-        goal_xy_range: float = 0.,
+        goal_xy_range: float = 0.1,
         goal_z_range: float = 0.,
-        obj_xy_range: float = 0.,
+        obj_xy_range: float = 0.1,
     ) -> None:
         super().__init__(sim)
         self.get_ee_position = get_ee_position
@@ -40,15 +40,16 @@ class PickPlaceAvoid(Task):
             body_name="object",
             half_extents=np.ones(3) * self.object_size / 2,
             mass=1.0,
-            position=np.array([0.0, -0.25, self.object_size / 2]),
+            position=np.array([0.0, -0.2, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 1.0]),
         )
+        self.obstacle_position = np.array([0.1, 0., 0.1])
         self.sim.create_cylinder(
             body_name="obstacle",
             radius=0.05,
             height=0.05,
             mass=1.0,
-            position=np.array([0.0, 0.0, 0.1]),
+            position=self.obstacle_position,
             rgba_color=np.array([0.9, 0.1, 0.1, 1.0]),
         )
         self.sim.create_box(
@@ -56,7 +57,7 @@ class PickPlaceAvoid(Task):
             half_extents=np.ones(3) * self.object_size / 2,
             mass=0.0,
             ghost=True,
-            position=np.array([0.0, 0.25, 0]),
+            position=np.array([0.0, 0.2, 0]),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.3]),
         )
 
@@ -73,31 +74,33 @@ class PickPlaceAvoid(Task):
         """Returns achieved goal. [0-2] - pos_obj, [3-5] - pos_tcp"""
         pos_obj = np.array(self.sim.get_base_position("object"))
         # pos_tcp = self.sim.get_link_position("panda", 11)
-        pos_tcp = self.get_ee_position()
+        # pos_tcp = self.get_ee_position()
         # pos_target = np.array(self.sim.get_base_position("target"))
 
-        achieved_goal = np.concatenate([pos_obj, pos_tcp])
+        # achieved_goal = np.concatenate([pos_obj, pos_tcp])
+        achieved_goal = np.array(pos_obj)
         return achieved_goal
 
     def get_desired_goal(self) -> np.ndarray:
-        """Return the current goal. [0-2] - pos_goal, [3-5] - pos_obstacle"""
+        """Return the current goal."""
         if self.goal is None:
             raise RuntimeError("No goal yet, call reset() first")
         else:
-            desired_goal = np.concatenate([self.goal.copy(), self.obstacle.copy()])
+            # desired_goal = np.concatenate([self.goal.copy(), self.goal.copy()])
+            desired_goal = np.array(self.goal.copy())
             return desired_goal
             # return self.goal.copy()
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
-        self.obstacle = np.array(self.sim.get_base_position("obstacle"))
         object_position = self._sample_object()
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("object", object_position, np.array([0.0, 0.0, 0.0, 1.0]))
+        self.sim.set_base_pose("obstacle", self.obstacle_position, np.array([0.0, 0.0, 0.0, 1.0]))
 
     def _sample_goal(self) -> np.ndarray:
         """Sample a goal."""
-        goal = np.array([0.0, 0.25, self.object_size / 2])  # z offset for the cube center
+        goal = np.array([0.0, 0.2, self.object_size / 2])  # z offset for the cube center
         noise = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         if self.np_random.random() < 0.3:
             noise[2] = 0.0
@@ -106,34 +109,39 @@ class PickPlaceAvoid(Task):
 
     def _sample_object(self) -> np.ndarray:
         """Randomize start position of object."""
-        object_position = np.array([0.0, -0.25, self.object_size / 2])
+        object_position = np.array([0.0, -0.2, self.object_size / 2])
         noise = self.np_random.uniform(self.obj_range_low, self.obj_range_high)
         object_position += noise
         return object_position
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> np.ndarray:
-        try:
-            d = distance(achieved_goal[:, :3], desired_goal[:, :3])
-        except:
-            d = distance(achieved_goal[:3], desired_goal[:3])
+        # try:
+        #     d = distance(achieved_goal[:, :3], desired_goal[:, :3])
+        # except:
+        #     d = distance(achieved_goal[:3], desired_goal[:3])
+        d = distance(achieved_goal[:3], desired_goal[:3])
         return np.array(d < self.distance_threshold, dtype=bool)
 
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
-        # Нужен штраф за приближение к препятствию: ближе чем на 0.1
-        reward = 0.0
-        if len(achieved_goal.shape) > 1:
-            tcp_to_obst = distance(achieved_goal[:, 3:6], desired_goal[:, 3:6])
-            tcp_to_obj = distance(achieved_goal[:, :3], achieved_goal[:, 3:6])
-            obj_to_target = distance(achieved_goal[:, :3], desired_goal[:, :3])
-        else:
-            tcp_to_obst = distance(achieved_goal[3:6], desired_goal[3:6])
-            tcp_to_obj = distance(achieved_goal[:3], achieved_goal[3:6])
-            obj_to_target = distance(achieved_goal[:3], desired_goal[:3])
-        too_close_count = np.count_nonzero(tcp_to_obst < 0.1)
+        # if len(achieved_goal.shape) > 1:
+        #     tcp_to_obj = distance(achieved_goal[:, :3], achieved_goal[:, 3:6])
+        #     obj_to_target = distance(achieved_goal[:, :3], desired_goal[:, :3])
+        # else:
+        #     tcp_to_obj = distance(achieved_goal[:3], achieved_goal[3:6])
+        #     obj_to_target = distance(achieved_goal[:3], desired_goal[:3])
+        # d = tcp_to_obj + obj_to_target
+        try:
+            pos_tcp = np.array([dd["pos_tcp"] for dd in info])
+            pos_obstacle = np.array([dd["pos_obstacle"] for dd in info])
+        except:
+            pos_tcp = info["pos_tcp"]
+            pos_obstacle = info["pos_obstacle"]
+        tcp_to_obj = distance(pos_tcp, achieved_goal)
+        obj_to_target = distance(achieved_goal, desired_goal)
 
-        reward = -tcp_to_obj - obj_to_target - (too_close_count * 10)
-        if self.reward_type == "sparse":
-            return np.array(reward > self.distance_threshold, dtype=np.float32)
-        else:
-            return reward.astype(np.float32)
+        reward = -tcp_to_obj - obj_to_target
+        # if self.reward_type == "sparse":
+        #     return -np.array(d > self.distance_threshold, dtype=np.float32)
+        # else:
+        return reward.astype(np.float32)
 

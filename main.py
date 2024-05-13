@@ -67,8 +67,8 @@ def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO", params: d
 
     env = gym.make(env_id, render_mode="human", reward_type="dense")
     model_cls = prepare_model(model_name)
-    model = model_cls.load(model_dir + "/end_model.zip", env=env)
-    model.load_replay_buffer(model_dir + "/end_replay_buffer")
+    model = model_cls.load(model_dir + "/best_model_300000.zip", env=env)
+    model.load_replay_buffer(model_dir + "/replay_buffer_300000")
     deterministic = True
     evaluate_policy(
         model,

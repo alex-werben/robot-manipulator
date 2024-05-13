@@ -319,18 +319,20 @@ class RobotTaskEnv(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
         self.robot.set_action(action)
         self.sim.step()
-        obstacle_name = "obstacle"
+        # obstacle_name = "obstacle"
         observation = self._get_obs()
         # An episode is terminated iff the agent has reached the target
         # terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_desired_goal()))
         terminated = bool(self.task.is_success(observation['achieved_goal'], observation['desired_goal']))
         truncated = False
-        info = {"is_success": terminated}
+        info = {"is_success": terminated,
+                "pos_obstacle": self.sim.get_base_position("obstacle"),
+                "pos_tcp": self.robot.get_ee_position()}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
         # print(distance(self.robot.get_ee_position(), self.sim.get_base_position(obstacle_name)))
-        has_collision = self.check_collision(self.robot.body_name, obstacle_name)
-        if has_collision:
-            print("Collision detected!")
+        # has_collision = self.check_collision(self.robot.body_name, obstacle_name)
+        # if has_collision:
+        #     print("Collision detected!")
 
         return observation, reward, terminated, truncated, info
 
