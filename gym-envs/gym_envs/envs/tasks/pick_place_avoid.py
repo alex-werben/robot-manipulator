@@ -7,7 +7,7 @@ from panda_gym.pybullet import PyBullet
 from panda_gym.utils import distance
 
 
-class PickAndPlace(Task):
+class PickPlaceAvoid(Task):
     def __init__(
         self,
         sim: PyBullet,
@@ -40,6 +40,14 @@ class PickAndPlace(Task):
             mass=1.0,
             position=np.array([0.0, 0.0, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 1.0]),
+        )
+        self.sim.create_cylinder(
+            body_name="obstacle",
+            radius=0.025,
+            height=0.1,
+            mass=1.0,
+            position=np.array([0.0, 0.0, 0.1]),
+            rgba_color=np.array([0.9, 0.1, 0.1, 1.0]),
         )
         self.sim.create_box(
             body_name="target",
@@ -114,9 +122,8 @@ class PickAndPlace(Task):
         else:
             tcp_to_obj = distance(achieved_goal[:3], achieved_goal[3:6])
             obj_to_target = distance(achieved_goal[:3], desired_goal[:3])
-        # d = tcp_to_obj + obj_to_target
         reward = - tcp_to_obj - obj_to_target
         if self.reward_type == "sparse":
-            return -np.array(d > self.distance_threshold, dtype=np.float32)
+            return np.array(reward > self.distance_threshold, dtype=np.float32)
         else:
             return reward.astype(np.float32)

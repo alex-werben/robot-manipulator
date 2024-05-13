@@ -12,6 +12,8 @@ def get_args():
     parser.add_argument('-c', '--config', dest='config', type=str)
     parser.add_argument('-e', '--env', dest='env', type=str, default='PandaReach-v3')
     parser.add_argument( '--model', dest='model', type=str, default='DDPG')
+    parser.add_argument('-s', '--scratch', dest='scratch', type=bool, default=True)
+
 
     args = parser.parse_args()
 

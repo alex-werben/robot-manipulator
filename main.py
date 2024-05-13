@@ -13,7 +13,8 @@ from src.arguments import get_args
 from src.callback import SaveOnBestTrainingRewardCallback
 from src.utils import prepare_directory_for_results, prepare_model, make_env
 
-import panda_gym
+# import panda_gym
+import gym_envs
 
 
 def train(env_id: str = "PandaReach-v3",
@@ -39,6 +40,7 @@ def train(env_id: str = "PandaReach-v3",
 
     replay_buffer_class = prepare_model(params['replay_buffer_class']) if 'replay_buffer_class' in params else None
     # Train from scratch or keep training with existing model
+    print(train_from_scratch)
     if train_from_scratch:
         model = model_cls(env=env,
                           tensorboard_log=log_dir,
@@ -47,7 +49,9 @@ def train(env_id: str = "PandaReach-v3",
                           **params['model_params'])
         reset_num_timesteps = True
     else:
+        print("loading model")
         model = model_cls.load(model_dir + model_to_load_path, env=env, device=device)
+        model.load_replay_buffer(model_dir + "/end_replay_buffer")
         reset_num_timesteps = False
 
     model.learn(**params['learn_params'],
@@ -61,10 +65,10 @@ def train(env_id: str = "PandaReach-v3",
 def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO", params: dict = None):
     log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, params['build_name'])
 
-    env = gym.make(env_id, render_mode="human")
+    env = gym.make(env_id, render_mode="human", reward_type="dense")
     model_cls = prepare_model(model_name)
     model = model_cls.load(model_dir + "/end_model.zip", env=env)
-    model.load_replay_buffer(model_dir + "/end_replay_buffer.pkl")
+    model.load_replay_buffer(model_dir + "/end_replay_buffer")
     deterministic = True
     evaluate_policy(
         model,
@@ -100,7 +104,7 @@ if __name__ == '__main__':
     if args.mode == "train":
         train(env_id=args.env,
               model_name=args.model,
-              train_from_scratch=True,
+              train_from_scratch=False,
               model_to_load_path="/end_model.zip",
               params=config)
     else:
