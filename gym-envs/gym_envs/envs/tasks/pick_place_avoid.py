@@ -86,10 +86,8 @@ class PickPlaceAvoid(Task):
         if self.goal is None:
             raise RuntimeError("No goal yet, call reset() first")
         else:
-            # desired_goal = np.concatenate([self.goal.copy(), self.goal.copy()])
             desired_goal = np.array(self.goal.copy())
             return desired_goal
-            # return self.goal.copy()
 
     def reset(self) -> None:
         self.goal = self._sample_goal()
@@ -115,31 +113,30 @@ class PickPlaceAvoid(Task):
         return object_position
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> np.ndarray:
-        # try:
-        #     d = distance(achieved_goal[:, :3], desired_goal[:, :3])
-        # except:
-        #     d = distance(achieved_goal[:3], desired_goal[:3])
-        d = distance(achieved_goal[:3], desired_goal[:3])
+        d = distance(achieved_goal, desired_goal)
         return np.array(d < self.distance_threshold, dtype=bool)
 
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
-        # if len(achieved_goal.shape) > 1:
-        #     tcp_to_obj = distance(achieved_goal[:, :3], achieved_goal[:, 3:6])
-        #     obj_to_target = distance(achieved_goal[:, :3], desired_goal[:, :3])
-        # else:
-        #     tcp_to_obj = distance(achieved_goal[:3], achieved_goal[3:6])
-        #     obj_to_target = distance(achieved_goal[:3], desired_goal[:3])
-        # d = tcp_to_obj + obj_to_target
+        reward = 0.0
         try:
             pos_tcp = np.array([dd["pos_tcp"] for dd in info])
             pos_obstacle = np.array([dd["pos_obstacle"] for dd in info])
+            action_gripper = np.array([dd["action_gripper"] for dd in info])
         except:
             pos_tcp = info["pos_tcp"]
             pos_obstacle = info["pos_obstacle"]
+            action_gripper = info["action_gripper"]
         tcp_to_obj = distance(pos_tcp, achieved_goal)
         obj_to_target = distance(achieved_goal, desired_goal)
 
-        reward = -tcp_to_obj - obj_to_target
+        reward = -tcp_to_obj -obj_to_target
+        # reward for open tcp if it's far from obj
+        # if tcp_to_obj > self.distance_threshold and action_gripper > 0:
+        reward += 0.5 * np.count_nonzero((tcp_to_obj > self.distance_threshold) & (action_gripper > 0))
+        # if tcp_to_obj < self.distance_threshold and action_gripper < 0:
+        reward += 0.5 * np.count_nonzero((tcp_to_obj < self.distance_threshold) & (action_gripper < 0))
+
+        # reward = -tcp_to_obj -obj_to_target
         # if self.reward_type == "sparse":
         #     return -np.array(d > self.distance_threshold, dtype=np.float32)
         # else:

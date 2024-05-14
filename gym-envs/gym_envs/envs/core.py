@@ -327,7 +327,8 @@ class RobotTaskEnv(gym.Env):
         truncated = False
         info = {"is_success": terminated,
                 "pos_obstacle": self.sim.get_base_position("obstacle"),
-                "pos_tcp": self.robot.get_ee_position()}
+                "pos_tcp": self.robot.get_ee_position(),
+                "action_gripper": action[-1]}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
         # print(distance(self.robot.get_ee_position(), self.sim.get_base_position(obstacle_name)))
         # has_collision = self.check_collision(self.robot.body_name, obstacle_name)
@@ -360,3 +361,6 @@ class RobotTaskEnv(gym.Env):
     def check_collision(self, body_1: str, body_2: str) -> bool:
         contact_points = self.sim.get_contact_points(body_1, body_2)
         return True if len(contact_points) > 0 else False
+
+    def get_fingers_width(self):
+        return self.robot.get_fingers_width()
