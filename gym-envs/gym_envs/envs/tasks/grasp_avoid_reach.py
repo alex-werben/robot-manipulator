@@ -7,7 +7,7 @@ from gym_envs.pybullet import PyBullet
 from gym_envs.utils import distance
 
 
-class Grasp(Task):
+class GraspAvoidReach(Task):
     def __init__(
         self,
         sim: PyBullet,
@@ -48,7 +48,6 @@ class Grasp(Task):
             body_name="obstacle",
             half_extents=np.array([20, 1, 1]) * self.object_size / 2,
             mass=100000.0,
-            ghost=True,
             position=self.obstacle_position,
             rgba_color=np.array([0.9, 0.1, 0.1, 0.0]),
         )
@@ -123,12 +122,10 @@ class Grasp(Task):
             pos_tcp = np.array([dd["pos_tcp"] for dd in info])
             pos_obstacle = np.array([dd["pos_obstacle"] for dd in info])
             gripper_action = np.array([dd["grasp"] for dd in info])
-            collisions = np.array([dd["collisions"] for dd in info])
         except:
             pos_tcp = info["pos_tcp"]
             pos_obstacle = info["pos_obstacle"]
             gripper_action = info["grasp"]
-            collisions = np.array(info["collisions"]).astype(bool)
 
         # distance between tcp and object
         tcp_to_obj = distance(pos_tcp, achieved_goal)
@@ -140,9 +137,11 @@ class Grasp(Task):
         grasp_reward = (position_for_grasp & grasp).astype(int)
         reward += grasp_reward
 
-        # penalty if there's collision and object not in gripper
-        penalty = (collisions & (~ position_for_grasp)).astype(int)
-        reward -= penalty
+        # penalty for getting too close to obstacle
+        penalty = 0.0
+        tcp_to_obstacle = distance(pos_tcp, pos_obstacle)
+        penalty = tcp_to_obstacle < 0.
+        reward -= tcp_to_obstacle
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
@@ -155,6 +154,6 @@ class Grasp(Task):
         pos_obj = pos_obj.T
         position_for_grasp = np.array((np.abs(pos_tcp[0] - pos_obj[0]) < 0.02)
                                       & (np.abs(pos_tcp[1] - pos_obj[1]) < 0.02)
-                                      & (np.abs(pos_tcp[2] - pos_obj[2]) < 0.01))
+                                      & (np.abs(pos_tcp[2] - pos_obj[2]) < 0.02))
 
         return position_for_grasp

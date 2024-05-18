@@ -360,3 +360,4 @@ class RobotTaskEnv(gym.Env):
 
     def get_fingers_width(self):
         return self.robot.get_fingers_width()
+
