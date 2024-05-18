@@ -51,6 +51,7 @@ class Panda(PyBulletRobot):
     def set_action(self, action: np.ndarray) -> None:
         action = action.copy()  # ensure action don't change
         action = np.clip(action, self.action_space.low, self.action_space.high)
+        # action[-1] = 0
         if self.control_type == "ee":
             ee_displacement = action[:3]
             target_arm_angles = self.ee_displacement_to_target_arm_angles(ee_displacement)
@@ -61,9 +62,11 @@ class Panda(PyBulletRobot):
         if self.block_gripper:
             target_fingers_width = 0
         else:
-            fingers_ctrl = action[-1] * 0.2  # limit maximum change in position
-            fingers_width = self.get_fingers_width()
-            target_fingers_width = fingers_width + fingers_ctrl
+            # fingers_ctrl = action[-1] * 0.2  # limit maximum change in position
+            # fingers_width = self.get_fingers_width()
+            target_fingers_width = 0.01 if action[-1] == 1 else 0.1
+            # target_fingers_width = fingers_width + fingers_ctrl
+            # print(action[-1], target_fingers_width)
         # print(self.get_link_position(9), self.get_link_position(10))
         target_angles = np.concatenate((target_arm_angles, [target_fingers_width / 2, target_fingers_width / 2]))
         self.control_joints(target_angles=target_angles)

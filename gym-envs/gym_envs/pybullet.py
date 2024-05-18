@@ -24,13 +24,13 @@ class PyBullet:
 
     def __init__(
         self,
-        render_mode: str = "rgb_array",
+        render_mode: str = "human",
         n_substeps: int = 20,
         background_color: Optional[np.ndarray] = None,
         renderer: str = "Tiny",
     ) -> None:
         self.render_mode = render_mode
-        background_color = background_color if background_color is not None else np.array([223.0, 54.0, 45.0])
+        background_color = background_color if background_color is not None else np.array([135.0, 206.0, 235.0])
         self.background_color = background_color.astype(np.float32) / 255
         options = "--background_color_red={} --background_color_green={} --background_color_blue={}".format(
             *self.background_color

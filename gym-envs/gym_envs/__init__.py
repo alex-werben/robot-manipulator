@@ -1,16 +1,8 @@
 from gymnasium.envs.registration import register
 
-# register(
-#      id="PandaReachObjEnv-v0",
-#      entry_point="gym_envs.envs:PandaReachObjEnv",
-#      kwargs={
-#           'render_mode': "rgb_array"
-#      }
-# )
-
 ENV_IDS = []
 
-for task in ["PickPlaceAvoid"]:
+for task in ["PickPlaceAvoid", "Grasp"]:
     for reward_type in ["sparse", "dense"]:
         for control_type in ["ee", "joints"]:
             reward_suffix = "Dense" if reward_type == "dense" else ""
