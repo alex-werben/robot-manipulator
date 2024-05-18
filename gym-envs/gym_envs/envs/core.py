@@ -330,10 +330,6 @@ class RobotTaskEnv(gym.Env):
                 "pos_tcp": self.robot.get_ee_position(),
                 "action_gripper": action[-1]}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
-        # print(distance(self.robot.get_ee_position(), self.sim.get_base_position(obstacle_name)))
-        # has_collision = self.check_collision(self.robot.body_name, obstacle_name)
-        # if has_collision:
-        #     print("Collision detected!")
 
         return observation, reward, terminated, truncated, info
 

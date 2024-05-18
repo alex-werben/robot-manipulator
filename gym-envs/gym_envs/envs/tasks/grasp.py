@@ -122,19 +122,21 @@ class Grasp(Task):
         try:
             pos_tcp = np.array([dd["pos_tcp"] for dd in info])
             pos_obstacle = np.array([dd["pos_obstacle"] for dd in info])
-            grasp = np.array([dd["grasp"] for dd in info])
+            gripper_action = np.array([dd["grasp"] for dd in info])
         except:
             pos_tcp = info["pos_tcp"]
             pos_obstacle = info["pos_obstacle"]
-            grasp = info["grasp"]
+            gripper_action = info["grasp"]
 
         # distance between tcp and object
         tcp_to_obj = distance(pos_tcp, achieved_goal)
         reward -= tcp_to_obj
 
         # check if caught
-        caught_reward = np.array(grasp)
-        reward += caught_reward
+        grasp = np.array(gripper_action < 0.0).astype(bool)
+        position_for_grasp = self.close_gripper(pos_tcp, pos_obstacle)
+        grasp_reward = (position_for_grasp & grasp).astype(int)
+        reward += grasp_reward
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
@@ -142,3 +144,11 @@ class Grasp(Task):
 
         return reward.astype(np.float32)
 
+    def close_gripper(self, pos_tcp, pos_obj):
+        pos_tcp = pos_tcp.T
+        pos_obj = pos_obj.T
+        position_for_grasp = np.array((np.abs(pos_tcp[0] - pos_obj[0]) < 0.02)
+                                      & (np.abs(pos_tcp[1] - pos_obj[1]) < 0.02)
+                                      & (np.abs(pos_tcp[2] - pos_obj[2]) < 0.02))
+
+        return position_for_grasp

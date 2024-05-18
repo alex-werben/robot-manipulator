@@ -116,8 +116,8 @@ class PandaGraspEnv(RobotTaskEnv):
 
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
         ee_position = self.robot.get_ee_position()
-        self.close_gripper(ee_position)
-        action[3] = 1 if self.grasp else 0
+        # self.close_gripper(ee_position)
+        # action[3] = 1 if self.grasp else 0
 
         self.robot.set_action(action)
         self.sim.step()
@@ -131,17 +131,10 @@ class PandaGraspEnv(RobotTaskEnv):
         info = {"is_success": terminated,
                 "pos_obstacle": self.sim.get_base_position("obstacle"),
                 "pos_tcp": self.robot.get_ee_position(),
-                "grasp": 1 if self.grasp else 0}
+                "grasp": action[-1]}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
 
         return observation, reward, terminated, truncated, info
-
-    def close_gripper(self, ee_position):
-        catch_position = self.sim.get_base_position("object")
-        if np.linalg.norm(ee_position[0] - catch_position[0]) < 0.02 \
-                and np.linalg.norm(ee_position[1] - catch_position[1]) < 0.02 \
-                and np.linalg.norm(ee_position[2] - catch_position[2]) < 0.007:
-            self.grasp = True
 
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict] = None

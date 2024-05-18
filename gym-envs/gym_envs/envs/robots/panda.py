@@ -62,10 +62,10 @@ class Panda(PyBulletRobot):
         if self.block_gripper:
             target_fingers_width = 0
         else:
-            # fingers_ctrl = action[-1] * 0.2  # limit maximum change in position
-            # fingers_width = self.get_fingers_width()
-            target_fingers_width = 0.01 if action[-1] == 1 else 0.1
-            # target_fingers_width = fingers_width + fingers_ctrl
+            fingers_ctrl = action[-1] * 0.2  # limit maximum change in position
+            fingers_width = self.get_fingers_width()
+            # target_fingers_width = 0.01 if action[-1] == 1 else 0.1
+            target_fingers_width = fingers_width + fingers_ctrl
             # print(action[-1], target_fingers_width)
         # print(self.get_link_position(9), self.get_link_position(10))
         target_angles = np.concatenate((target_arm_angles, [target_fingers_width / 2, target_fingers_width / 2]))
