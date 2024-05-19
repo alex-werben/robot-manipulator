@@ -43,6 +43,7 @@ class Grasp(Task):
             position=np.array([0.0, -0.2, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 1.0]),
         )
+        self.sim.set_lateral_friction("object", -1, 1.0)
         self.obstacle_position = np.array([-0.1, 0., 0.1])
         self.sim.create_box(
             body_name="obstacle",
@@ -73,11 +74,6 @@ class Grasp(Task):
     def get_achieved_goal(self) -> np.ndarray:
         """Returns achieved goal. [0-2] - pos_obj, [3-5] - pos_tcp"""
         pos_obj = np.array(self.sim.get_base_position("object"))
-        # pos_tcp = self.sim.get_link_position("panda", 11)
-        # pos_tcp = self.get_ee_position()
-        # pos_target = np.array(self.sim.get_base_position("target"))
-
-        # achieved_goal = np.concatenate([pos_obj, pos_tcp])
         achieved_goal = np.array(pos_obj)
         return achieved_goal
 
