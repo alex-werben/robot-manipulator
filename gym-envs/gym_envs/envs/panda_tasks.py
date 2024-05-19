@@ -125,7 +125,7 @@ class PandaGraspEnv(RobotTaskEnv):
 		terminated = bool(self.task.is_success(observation['achieved_goal'], observation['desired_goal']))
 		truncated = False
 		info = {"is_success": terminated,
-				"pos_obstacle": self.sim.get_base_position("obstacle"),
+				"pos_obj": self.sim.get_base_position("object"),
 				"pos_tcp": self.robot.get_ee_position(),
 				"grasp": action[-1],
 				"collisions": self.check_collision(self.robot.body_name, "object")}
@@ -191,7 +191,6 @@ class PandaGraspAvoidReachEnv(RobotTaskEnv):
 		terminated = bool(self.task.is_success(observation['achieved_goal'], observation['desired_goal']))
 		truncated = False
 		info = {"is_success": terminated,
-				"pos_obstacle": self.sim.get_base_position("obstacle"),
 				"pos_tcp": self.robot.get_ee_position(),
 				"grasp": action[-1],}
 		reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))

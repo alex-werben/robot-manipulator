@@ -326,7 +326,6 @@ class RobotTaskEnv(gym.Env):
         terminated = bool(self.task.is_success(observation['achieved_goal'], observation['desired_goal']))
         truncated = False
         info = {"is_success": terminated,
-                "pos_obstacle": self.sim.get_base_position("obstacle"),
                 "pos_tcp": self.robot.get_ee_position(),
                 "action_gripper": action[-1]}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_desired_goal(), info))
