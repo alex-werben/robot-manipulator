@@ -38,7 +38,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                     # Example for saving best model
                     if self.verbose > 0:
                         print(f"Saving new best model to {self.save_path}, current timestep: {self.n_calls * 12}")
-                    self.model.save(self.model_dir + f"/best_model_{self.n_calls * 12}.zip")
-                    self.model.save_replay_buffer(self.model_dir + f"/replay_buffer_{self.n_calls * 12}.pkl")
+                    self.model.save(self.model_dir + f"/best_model.zip")
+                    self.model.save_replay_buffer(self.model_dir + f"/replay_buffer.pkl")
 
         return True
