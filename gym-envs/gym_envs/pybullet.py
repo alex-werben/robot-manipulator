@@ -657,6 +657,20 @@ class PyBullet:
             lateralFriction=lateral_friction,
         )
 
+    def set_rolling_friction(self, body: str, link: int, rolling_friction: float) -> None:
+        """Set the lateral friction of a link.
+
+        Args:
+            body (str): Body unique name.
+            link (int): Link index in the body.
+            rolling_friction (float): Lateral friction.
+        """
+        self.physics_client.changeDynamics(
+            bodyUniqueId=self._bodies_idx[body],
+            linkIndex=link,
+            rollingFriction=rolling_friction,
+        )
+
     def set_spinning_friction(self, body: str, link: int, spinning_friction: float) -> None:
         """Set the spinning friction of a link.
 

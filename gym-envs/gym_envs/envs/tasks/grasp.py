@@ -43,7 +43,8 @@ class Grasp(Task):
             position=np.array([0.0, -0.2, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 1.0]),
         )
-        self.sim.set_lateral_friction("object", -1, 1.0)
+        self.sim.set_lateral_friction("object", -1, 10.0)
+        self.sim.set_rolling_friction("object", -1, 0.01)
         self.obstacle_position = np.array([-0.1, 0., 0.1])
         self.sim.create_box(
             body_name="obstacle",
@@ -58,7 +59,7 @@ class Grasp(Task):
             half_extents=np.ones(3) * self.object_size / 2,
             mass=0.0,
             ghost=True,
-            position=np.array([0.0, 0.2, 0]),
+            position=np.array([0.0, -0.2, 0.2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.3]),
         )
 
@@ -94,7 +95,7 @@ class Grasp(Task):
 
     def _sample_goal(self) -> np.ndarray:
         """Sample a goal."""
-        goal = np.array([0.0, 0.2, self.object_size / 2])  # z offset for the cube center
+        goal = np.array([0.0, -0.2, 0.2 + self.object_size / 2])  # z offset for the cube center
         noise = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         if self.np_random.random() < 0.3:
             noise[2] = 0.0
@@ -139,6 +140,10 @@ class Grasp(Task):
         # penalty if there's collision and object not in gripper
         penalty = (collisions & (~ position_for_grasp)).astype(int)
         reward -= penalty
+
+        # extra reward for grasp
+        extra_reward = (collisions & position_for_grasp).astype(int)
+        reward += extra_reward
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
