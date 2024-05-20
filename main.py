@@ -105,7 +105,7 @@ if __name__ == '__main__':
         train(env_id=args.env,
               model_name=args.model,
               train_from_scratch=True,
-              model_to_load_path="/end_model.zip",
+              model_to_load_path="/end_model",
               params=config)
     else:
         test(env_id=args.env,

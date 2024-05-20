@@ -51,7 +51,7 @@ class Grasp(Task):
             half_extents=np.ones(3) * self.object_size / 2,
             mass=0.0,
             ghost=True,
-            position=np.array([0.0, -0.2, 0.2]),
+            position=np.array([0.0, 0.2, 0.1]),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.3]),
         )
 
@@ -87,7 +87,7 @@ class Grasp(Task):
 
     def _sample_goal(self) -> np.ndarray:
         """Sample a goal."""
-        goal = np.array([0.0, -0.2, 0.2 + self.object_size / 2])  # z offset for the cube center
+        goal = np.array([0.0, 0.2, 0.1 + self.object_size / 2])  # z offset for the cube center
         noise = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         if self.np_random.random() < 0.3:
             noise[2] = 0.0
@@ -102,11 +102,14 @@ class Grasp(Task):
         return object_position
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> np.ndarray:
-        d = distance(achieved_goal, desired_goal)
-        # and grasped
-        return np.array(d < self.distance_threshold, dtype=bool)
+        # d = distance(achieved_goal, desired_goal)
+        # return np.array(d < self.distance_threshold, dtype=bool)
+
+        d = self.height_diff(achieved_goal)
+        return np.array(d > 0.1, dtype=bool)
 
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
+        # achieved_goal = np.array(achieved_goal)
         try:
             pos_tcp = np.array([dd["pos_tcp"] for dd in info])
             gripper_action = np.array([dd["grasp"] for dd in info]).astype(bool)
@@ -125,27 +128,36 @@ class Grasp(Task):
         # check if caught
         grasp_reward = (position_for_grasp & (gripper_action < 0.0)).astype(int)
 
-        # lift reward
-        lift_reward = self.height_diff(achieved_goal)
+        # lift reward and penalty
+        lift_diff = self.height_diff(achieved_goal)
+
+        # penalty
+        penalty_for_overlifting = self.height_penalty(achieved_goal)
 
         # penalty if there's collision and object not in gripper
         penalty_for_pushing = (collisions & (~ position_for_grasp)).astype(int)
 
         # reward for grasp
-        extra_reward = (collisions & position_for_grasp).astype(int)
+        holding_reward = (collisions & position_for_grasp).astype(int)
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
 
-        total_reward = - reach_reward + grasp_reward + 5 * lift_reward \
-                       - penalty_for_pushing + extra_reward - obj_to_target
+        total_reward = - reach_reward + grasp_reward + 10 * lift_diff \
+                       - 2 * penalty_for_pushing + holding_reward \
+                       - 3 * obj_to_target - 2 * penalty_for_overlifting
 
         return total_reward.astype(np.float32)
 
-    def height_diff(self, pos_obj):
+    def height_penalty(self, pos_obj):
         pos_obj = pos_obj.T
         diff = pos_obj[2] - self.initial_height
-        return diff
+        return (diff > 0.15).astype(int)
+
+    def height_diff(self, pos_obj):
+        pos_obj = pos_obj.T
+        diff = np.clip(pos_obj[2] - self.initial_height, a_min=0, a_max=0.15)
+        return np.array(diff)
 
     def check_position_for_grasp(self, pos_tcp, pos_obj):
         pos_tcp = pos_tcp.T
