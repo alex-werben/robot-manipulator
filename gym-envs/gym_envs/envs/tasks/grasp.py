@@ -87,7 +87,7 @@ class Grasp(Task):
 
     def _sample_goal(self) -> np.ndarray:
         """Sample a goal."""
-        goal = np.array([0.0, 0.2, 0.1 + self.object_size / 2])  # z offset for the cube center
+        goal = np.array([0.0, 0.2, 0.15 + self.object_size / 2])  # z offset for the cube center
         noise = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         if self.np_random.random() < 0.3:
             noise[2] = 0.0
@@ -102,11 +102,11 @@ class Grasp(Task):
         return object_position
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> np.ndarray:
-        # d = distance(achieved_goal, desired_goal)
-        # return np.array(d < self.distance_threshold, dtype=bool)
+        d = distance(achieved_goal, desired_goal)
+        return np.array(d < self.distance_threshold, dtype=bool)
 
-        d = self.height_diff(achieved_goal)
-        return np.array(d > 0.1, dtype=bool)
+        # d = self.height_diff(achieved_goal)
+        # return np.array(d > 0.1, dtype=bool)
 
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
         # achieved_goal = np.array(achieved_goal)
