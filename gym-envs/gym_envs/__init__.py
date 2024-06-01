@@ -2,7 +2,7 @@ from gymnasium.envs.registration import register
 
 ENV_IDS = []
 
-for task in ["PickPlaceAvoid", "Grasp"]:
+for task in ["PickPlaceAvoid", "Grasp", "GraspAvoidReach"]:
     for reward_type in ["sparse", "dense"]:
         for control_type in ["ee", "joints"]:
             reward_suffix = "Dense" if reward_type == "dense" else ""

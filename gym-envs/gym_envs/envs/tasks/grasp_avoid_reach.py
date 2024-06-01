@@ -43,13 +43,22 @@ class GraspAvoidReach(Task):
             position=np.array([0.0, -0.2, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 1.0]),
         )
-        self.obstacle_position = np.array([-0.1, 0., 0.1])
-        self.sim.create_box(
+        self.obstacle_position = np.array([0., 0., 0.1])
+        # self.sim.create_box(
+        #     body_name="obstacle",
+        #     half_extents=np.array([20, 1, 1]) * self.object_size / 2,
+        #     mass=100000.0,
+        #     position=self.obstacle_position,
+        #     rgba_color=np.array([0.9, 0.1, 0.1, 0.0]),
+        # )
+        self.sim.create_cylinder(
             body_name="obstacle",
-            half_extents=np.array([20, 1, 1]) * self.object_size / 2,
+            # half_extents=np.array([20, 1, 1]) * self.object_size / 2,
+            radius=0.05,
+            height=0.1,
             mass=100000.0,
             position=self.obstacle_position,
-            rgba_color=np.array([0.9, 0.1, 0.1, 0.0]),
+            rgba_color=np.array([0.9, 0.1, 0.1, 1.0]),
         )
         self.sim.create_box(
             body_name="target",
@@ -117,37 +126,42 @@ class GraspAvoidReach(Task):
         return np.array(d < self.distance_threshold, dtype=bool)
 
     def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
-        reward = 0.0
         try:
             pos_tcp = np.array([dd["pos_tcp"] for dd in info])
             pos_obstacle = np.array([dd["pos_obstacle"] for dd in info])
-            gripper_action = np.array([dd["grasp"] for dd in info])
+            collisions = np.array([dd["collisions"] for dd in info])
         except:
             pos_tcp = info["pos_tcp"]
             pos_obstacle = info["pos_obstacle"]
-            gripper_action = info["grasp"]
-
+            collisions = np.array(info["collisions"]).astype(bool)
         # distance between tcp and object
-        tcp_to_obj = distance(pos_tcp, achieved_goal)
-        reward -= tcp_to_obj
+        reach_reward = distance(pos_tcp, achieved_goal)
+
+        # check if gripper in position for grasp
+        position_for_grasp = self.check_position_for_grasp(pos_tcp, achieved_goal)
 
         # check if caught
-        grasp = np.array(gripper_action < 0.0).astype(bool)
-        position_for_grasp = self.close_gripper(pos_tcp, achieved_goal)
-        grasp_reward = (position_for_grasp & grasp).astype(int)
-        reward += grasp_reward
+        grasp_reward = (position_for_grasp & collisions).astype(int)
 
-        # penalty for getting too close to obstacle
-        penalty = 0.0
-        tcp_to_obstacle = distance(pos_tcp, pos_obstacle)
-        penalty = tcp_to_obstacle < 0.
-        reward -= tcp_to_obstacle
+        # penalty if there's collision and object not in gripper
+        penalty_for_pushing = (collisions & (~ position_for_grasp)).astype(int)
+
+        # penalty for getting close to obstacle
+        tcp_to_obst = distance(pos_tcp, pos_obstacle)
+        penalty_for_obst = (tcp_to_obst < 0.1).astype(int)
+        # holding_reward = (collisions & position_for_grasp).astype(int)
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
-        reward -= obj_to_target
 
-        return reward.astype(np.float32)
+
+        total_reward = - reach_reward + position_for_grasp.astype(int) \
+                       + 5 * grasp_reward - 10 * obj_to_target - 2 * penalty_for_pushing \
+                       - 5 * penalty_for_obst
+
+        return total_reward.astype(np.float32)
+
+
 
     def close_gripper(self, pos_tcp, pos_obj):
         pos_tcp = pos_tcp.T

@@ -126,26 +126,29 @@ class Grasp(Task):
         position_for_grasp = self.check_position_for_grasp(pos_tcp, achieved_goal)
 
         # check if caught
-        grasp_reward = (position_for_grasp & (gripper_action < 0.0)).astype(int)
+        grasp_reward = (position_for_grasp & collisions).astype(int)
 
         # lift reward and penalty
-        lift_diff = self.height_diff(achieved_goal)
+        # lift_diff = self.height_diff(achieved_goal)
 
         # penalty
-        penalty_for_overlifting = self.height_penalty(achieved_goal)
+        # penalty_for_overlifting = self.height_penalty(achieved_goal)
 
         # penalty if there's collision and object not in gripper
         penalty_for_pushing = (collisions & (~ position_for_grasp)).astype(int)
 
         # reward for grasp
-        holding_reward = (collisions & position_for_grasp).astype(int)
+        # holding_reward = (collisions & position_for_grasp).astype(int)
 
         # distance between object and target
         obj_to_target = distance(achieved_goal, desired_goal)
 
-        total_reward = - reach_reward + grasp_reward + 10 * lift_diff \
-                       - 2 * penalty_for_pushing + holding_reward \
-                       - 3 * obj_to_target - 2 * penalty_for_overlifting
+        # total_reward = - reach_reward + 10 * grasp_reward \
+        #                - 2 * penalty_for_pushing + \
+        #                - 10 * obj_to_target
+
+        total_reward = - reach_reward + position_for_grasp.astype(int) \
+                       + 5 * grasp_reward - 10 * obj_to_target - 2 * penalty_for_pushing
 
         return total_reward.astype(np.float32)
 

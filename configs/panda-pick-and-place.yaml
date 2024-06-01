@@ -1,7 +1,7 @@
 
 model_name: DDPG
 
-build_name: 'default'
+build_name: 'new_v1'
 
 model_params:
   batch_size: 2048
@@ -25,5 +25,5 @@ model_params:
 replay_buffer_class: HerReplayBuffer
 
 learn_params:
-  total_timesteps: 1000000
-  tb_log_name: 'default'
+  total_timesteps: 5000000
+  tb_log_name: 'new_v1'
