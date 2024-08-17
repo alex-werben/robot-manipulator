@@ -1,0 +1,17 @@
+
+model_name: DDPG
+
+build_name: 'default'
+
+model_params:
+  batch_size: 256
+  buffer_size: 1000000
+  gamma: 0.95
+  learning_rate: 0.001
+  learning_starts: 1000
+  policy: 'MlpPolicy'
+
+
+learn_params:
+  total_timesteps: 20000
+  tb_log_name: 'default'
