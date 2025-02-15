@@ -2,12 +2,12 @@
   <!-- The timestep has a big influence on the contacts stability -->
   <option cone="elliptic" impratio="10" timestep="0.001"/>
   <!-- <statistic center="0 0 0.1" extent="0.6"/> -->
-  <!-- <option gravity="0 0 0" /> -->
-  <!-- <visual>
+  <option gravity="0 0 -9.81" />
+  <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
     <rgba haze="0.15 0.25 0.35 1"/>
     <global azimuth="140" elevation="-30"/>
-  </visual> -->
+  </visual>
 
   <asset>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
@@ -19,10 +19,10 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" pos="0 0 0" friction="0.1"/>
-    <body name="box" pos="0.0 0.2 0.01">
+    <body name="box" pos="0.0 40 20">
         <freejoint name="red_box_joint"/>
-        <inertial pos="0 0 0" mass="0.1" diaginertia="0.00016667 0.00016667 0.00016667"/>
-        <geom friction="0.5" condim="3" pos="0 0 0" size="0.015 0.015 0.015" type="box" name="red_box" rgba="0.5 0 0 1" priority="1"/>
+        <inertial pos="0 0 0" mass="0.01" diaginertia="0.01 0.01 0.01"/>
+        <geom friction="0.5" condim="3" pos="0 0 0" size="10 10 10" type="box" name="red_box" rgba="0.5 0 0 1" priority="1"/>
     </body>
   </worldbody>
   <include file="robot.xml" scale="0.001" />

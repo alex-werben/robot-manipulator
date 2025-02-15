@@ -11,6 +11,8 @@
     <mesh name="link4_1" file="../meshes/link4_1.stl"/>
   </asset>
 
+
+
   <default>
     <default class="low_cost_robot">
       <general biastype="affine"/>
@@ -18,33 +20,41 @@
       <!-- NOTE: values other than axis and pos here have not been properly identified -->
       <joint axis="0 1 0"/>
       <default class="joint1">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
-        <position ctrlrange="-3.14158 3.14158" kp="1000" dampratio="1"/>
+        <position ctrlrange="-3.14158 3.14158" kp="10000" dampratio="1"/>
       </default>
       <default class="joint2">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
         <position ctrlrange="-3.14158 3.14158" kp="1000" dampratio="1"/>
       </default>
       <default class="joint3">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
         <position ctrlrange="-3.14158 3.14158" kp="1000" dampratio="1"/>
       </default>
       <default class="joint4">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
         <position ctrlrange="-3.14158 3.14158" kp="1000" dampratio="1"/>
       </default>
       <default class="joint5">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
         <position ctrlrange="-3.14158 3.14158" kp="1000" dampratio="1"/>
       </default>
       <default class="joint6">
-        <!-- <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.1"/> -->
         <position ctrlrange="0.032 2.45" kp="1000" dampratio="1"/>
       </default>
+      <default class="joint">
+        <position ctrlrange="0.032 2.45" kp="1000" dampratio="1"/>
+      </default>
+      <default class="x">
+        <position/>
+      </default>
+      <default class="y">
+        <position/>
+      </default>
+      <default class="z">
+        <position/>
+      </default>
+
     </default>
   </default>
 
   <worldbody>
+    <site name="ee_site" pos="0 0 0"/>
     <geom name="base_link_collision" type="mesh" mesh="base_link" rgba="0.7 0.7 0.7 1"/>
     <body name="link1_1_link" pos="0 0 39.95">
       <inertial pos="1.75295 -11.1599 11.4137" quat="0.454483 0.479346 -0.578478 0.478577" mass="0.000001" diaginertia="0.30699 0.282424 0.179345"/>
@@ -63,6 +73,7 @@
             <joint name="joint4" pos="0 0 0" axis="1 0 0" range="-3.14 3.14"/>
             <geom name="link4_1_collision" pos="0 -105.258 -167.394" quat="1 0 0 0" type="mesh" mesh="link4_1" rgba="0.7 0.7 0.7 1"/>
             <body name="gripper_static_link" pos="1.52832 0.007 -45">
+              <!-- <site name="ee_site" pos="0 0 0" size="0.02"/> -->
               <inertial pos="5.44087 0.11501 -19.0509" quat="0.694136 -0.208599 -0.203687 0.658159" mass="0.000001" diaginertia="0.377576 0.337748 0.139385"/>
               <joint name="joint5" pos="0 0 0" axis="0 0 1" range="-3.14 3.14"/>
               <geom name="gripper_static_1_collision" pos="-1.52832 -105.265 -122.394" quat="1 0 0 0" type="mesh" mesh="gripper_static_1" rgba="0.7 0.7 0.7 1"/>
@@ -85,6 +96,16 @@
     <position class="joint4" name="joint4" joint="joint4"/>
     <position class="joint5" name="joint5" joint="joint5"/>
     <position class="joint6" name="joint6" joint="joint6"/>
+    <general name="x" site="ee_site" ctrllimited="true" ctrlrange="-1 1"/>
+    <general name="y" site="ee_site" ctrllimited="true" ctrlrange="-1 1"/>
+    <general name="z" site="ee_site" ctrllimited="true" ctrlrange="-1 1"/>
   </actuator>
+
+  <!-- <visual>
+      <global>
+          <slider name="Slider1" range="0 1" default="0.5"/>
+          <slider name="Slider2" range="-1 1" default="0"/>
+      </global>
+  </visual> -->
 
 </mujoco>
