@@ -1,113 +1,68 @@
-import multiprocessing
-import os
+import pybullet as p
+import pybullet_data
+import time
+from src.simulation import Simulation
+from src.robot import Robot
+from src.dynamixel import Dynamixel
+import numpy as np
+import time
 
-import torch
-import yaml
-
-import gymnasium as gym
-from stable_baselines3 import PPO, DDPG, HerReplayBuffer
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import SubprocVecEnv
-
-from src.arguments import get_args
-from src.callback import SaveOnBestTrainingRewardCallback
-from src.utils import prepare_directory_for_results, prepare_model, make_env
-
-# import panda_gym
-import gym_envs
-
-
-def train(env_id: str = "PandaReach-v3",
-          model_name: str = "DDPG",
-          train_from_scratch: bool = True,
-          model_to_load_path: str = None,
-          params: dict = None):
-    log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, params['build_name'])
-
-    # Multiprocessing
-    num_cpu = multiprocessing.cpu_count()
-    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-    # Vectorized environments
-    env = SubprocVecEnv([make_env(env_id, i, log_dir, train_from_scratch) for i in range(num_cpu)])
-    # env = gym.make(env_id, reward_type="dense")
-    # Callback to save best model during learning
-    save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000,
-                                                     log_dir=log_dir,
-                                                     model_dir=model_dir,
-                                                     verbose=1)
-    # Prepare model classes
-    model_cls = prepare_model(params['model_name'])
-
-    replay_buffer_class = prepare_model(params['replay_buffer_class']) if 'replay_buffer_class' in params else None
-    # Train from scratch or keep training with existing model
-    # print(train_from_scratch)
-    if train_from_scratch:
-        model = model_cls(env=env,
-                          tensorboard_log=log_dir,
-                          device=device,
-                          replay_buffer_class=replay_buffer_class,
-                          **params['model_params'])
-        reset_num_timesteps = True
-    else:
-        print("loading model")
-        model = model_cls.load(model_dir + model_to_load_path, env=env, device=device)
-        model.load_replay_buffer(model_dir + "/end_replay_buffer")
-        reset_num_timesteps = False
-
-    model.learn(**params['learn_params'],
-                callback=save_callback,
-                progress_bar=True,
-                reset_num_timesteps=reset_num_timesteps)
-    model.save(model_dir + "/end_model.zip")
-    model.save_replay_buffer(model_dir + "/end_replay_buffer.pkl")
+# p.connect(p.GUI)
+# p.resetSimulation()
+# p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
+# p.setAdditionalSearchPath(pybullet_data.getDataPath())
+# p.setAdditionalSearchPath("/Users/alexander/Developer/Robot-Manipulator/")
+# p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+# p.setGravity(0, 0, -10)
+# p.setPhysicsEngineParameter(solverResidualThreshold=0)
 
 
-def test(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO", params: dict = None):
-    log_dir, model_dir = prepare_directory_for_results(os.getcwd(), env_id, model_name, params['build_name'])
+# # Generate panda, plane, other objects
+# orientation = p.getQuaternionFromEuler([0, 0, 0])
+# # panda
+# robot = p.loadURDF(
+#     "simulation/model/robot.urdf",
+#     useFixedBase=True,
+#     globalScaling=0.01
+# )
 
-    env = gym.make(env_id, render_mode="human", reward_type="dense")
-    model_cls = prepare_model(model_name)
-    model = model_cls.load(model_dir + "/best_model.zip", env=env)
-    model.load_replay_buffer(model_dir + "/replay_buffer")
-    deterministic = True
-    evaluate_policy(
-        model,
-        env,
-        n_eval_episodes=100,
-        render=True,
-        deterministic=deterministic
-    )
+# p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+# joint1 = p.addUserDebugParameter("joint1", -3.14, 3.14, 0)
+# joint2 = p.addUserDebugParameter("joint2", -3.14, 3.14, 0)
+# joint3 = p.addUserDebugParameter("joint3", -3.14, 3.14, 0)
+# joint4 = p.addUserDebugParameter("joint4", -3.14, 3.14, 0)
+# joint5 = p.addUserDebugParameter("joint5", -3.14, 3.14, 3.14)
+# joint6 = p.addUserDebugParameter("joint6", -3.14, 3.14, 0)
+
+# x_param = p.addUserDebugParameter("x", -1, 1, 0)
+# y_param = p.addUserDebugParameter("y", -1, 1, 0)
+# z_param = p.addUserDebugParameter("z", -1, 1, 0)
+# joint_num = p.getNumJoints(robot)
+# ee_index = joint_num - 1
+
+# joint_positions = [0, 0, 0, 0, 3.14, 0]
+# index = 0
+# for j in range(p.getNumJoints(robot)):
+#     p.changeDynamics(robot, j, linearDamping=0, angularDamping=0)
+#     info = p.getJointInfo(robot, j)
+#     joint_type = info[2]
+#     if joint_type == p.JOINT_PRISMATIC or joint_type == p.JOINT_REVOLUTE:
+#         p.resetJointState(robot, j, joint_positions[index])
+#         index = index + 1
+        
+# ee_position = p.getLinkState(robot, ee_index)[0]
 
 
-def test_env(env_id: str = "PandaReachObjEnv-v0", model_name: str = "PPO"):
-    env = gym.make(env_id, render_mode="human")
-    model_cls = prepare_model(model_name)
+follower_dynamixel = Dynamixel.Config(baudrate=1_000_000, device_name="/dev/tty.usbmodem58FA0959341").instantiate()
+follower = Robot(follower_dynamixel, servo_ids=[1, 2, 3, 4, 5, 6])
 
-    model = model_cls('MultiInputPolicy', env=env)
-    # model.load_replay_buffer(model_dir + "/replay_buffer_504000.pkl")
-    deterministic = False
-    evaluate_policy(
-        model,
-        env,
-        n_eval_episodes=100,
-        render=True,
-        deterministic=deterministic
-    )
+s = Simulation()
+while True:
+    new_joint_positions = s.step()
 
 
-if __name__ == '__main__':
-    args = get_args()
-    config_path = args.config
-    with open(config_path) as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
+    follower.set_goal_pos(new_joint_positions)
+        
+follower._disable_torque()
 
-    if args.mode == "train":
-        train(env_id=args.env,
-              model_name=args.model,
-              train_from_scratch=True,
-              model_to_load_path="/end_model",
-              params=config)
-    else:
-        test(env_id=args.env,
-             model_name=args.model,
-             params=config)
+# p.disconnect()
